@@ -1,11 +1,16 @@
 #!/bin/bash
+# This will later get integrated into the extract-events main loop.
 
-timesfile=times
+# Configuration
+timesfile=times # pre-filtered joins/leaves/restarts
+slotsec=3600 # one slot each hour
 
-online=
-jointimes=()
-slots=()
+# Init
+online= # holds all players that are online at a time
+jointimes=() # holds the last time the player joined
+slots=() # holds the names of players online at that timeframe
 
+# Adds the player to all slots he was online at, removes him from online players
 leave() {
 	jointime="${jointimes["$name"]}"
 	if [ -z "$jointime" ]
@@ -14,8 +19,7 @@ leave() {
 	else
 		diff="$(( $seconds - $jointime ))"
 		online="`echo $online | sed "s/$name *//"`"
-		echo "$name was $diff sec on"
-		for slot in `seq $(($jointime / 60)) $(($seconds / 60))` # one interval each minute
+		for slot in `seq $(($jointime / $slotsec)) $(($seconds / $slotsec))`
 		do
 			slots["$slot"]="$name ${slots["$slot"]}"
 		done
@@ -23,12 +27,12 @@ leave() {
 	jointimes["$name"]=
 }
 
+# Go through all pre-filtered joins/leaves/restarts
 while read line
 do
-	echo "=> $line"
-	seconds="`echo $line | cut -b1-10`"
-	action="`echo $line | cut -b12- | grep -o '^[^ ]*'`"
-	name="`echo $line | cut -b12- | grep -v restart | grep -o '[^ ]*$'`"
+	seconds="`echo $line | cut -b1-10`" # e.g. 1407874849
+	action="`echo $line | cut -b12- | grep -o '^[^ ]*'`" # joined/left/restart
+	name="`echo $line | cut -b12- | grep -v restart | grep -o '[^ ]*$'`" # player name w/o color escape codes
 	case $action in
 		joined)
 			online="$name $online"
