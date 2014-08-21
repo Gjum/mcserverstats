@@ -18,9 +18,10 @@ leave() {
 	else
 		diff="$(( $seconds - $jointime ))"
 		online="`echo $online | sed "s/$name *//"`"
-		for slot in `seq $(($jointime / $slotsec)) $(($seconds / $slotsec))`
-		do
-			slots["$slot"]="$name ${slots["$slot"]}"
+		for slot in `seq $(($jointime / $slotsec)) $(($seconds / $slotsec))`; do
+			if `echo "${slots["$slot"]}" | grep -qv "$name"`; then
+				slots["$slot"]="$name ${slots["$slot"]}"
+			fi
 		done
 	fi
 	jointimes["$name"]=
@@ -36,7 +37,8 @@ while read line; do
 			online="$name $online"
 			jointimes["$name"]="$seconds"
 			;;
-		left) leave ;;
+		left) leave
+			;;
 		restart)
 			if [ -n "$online" ]; then
 				for name in "$online" # overwrite the empty name field
@@ -46,7 +48,16 @@ while read line; do
 				online=
 			fi
 			;;
-		*) echo "ERROR Invalid action \"$action\". \"$line\"" ;;
+		*) echo "ERROR Invalid action \"$action\". \"$line\""
+			;;
 	esac
 done < $timesfile
+
+# print time slot occupations
+# TODO breaks at the first time nobody was on for an hour
+for slot in "${slots[@]}"; do
+	echo "$slot"
+done
+
+exit 0
 
