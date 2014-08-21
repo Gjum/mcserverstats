@@ -13,8 +13,7 @@ slots=() # holds the names of players online at that timeframe
 # Adds the player to all slots he was online at, removes him from online players
 leave() {
 	jointime="${jointimes["$name"]}"
-	if [ -z "$jointime" ]
-	then
+	if [ -z "$jointime" ]; then
 		echo "ERROR \"$name\" left without joining. \"$line\""
 	else
 		diff="$(( $seconds - $jointime ))"
@@ -28,8 +27,7 @@ leave() {
 }
 
 # Go through all pre-filtered joins/leaves/restarts
-while read line
-do
+while read line; do
 	seconds="`echo $line | cut -b1-10`" # e.g. 1407874849
 	action="`echo $line | cut -b12- | grep -o '^[^ ]*'`" # joined/left/restart
 	name="`echo $line | cut -b12- | grep -v restart | grep -o '[^ ]*$'`" # player name w/o color escape codes
@@ -38,13 +36,9 @@ do
 			online="$name $online"
 			jointimes["$name"]="$seconds"
 			;;
-		left)
-			leave
-			;;
+		left) leave ;;
 		restart)
-			echo "online='$online'"
-			if [ -n "$online" ]
-			then
+			if [ -n "$online" ]; then
 				for name in "$online" # overwrite the empty name field
 				do
 					leave
@@ -52,9 +46,7 @@ do
 				online=
 			fi
 			;;
-		*)
-			echo "ERROR Invalid action \"$action\". \"$line\""
-			;;
+		*) echo "ERROR Invalid action \"$action\". \"$line\"" ;;
 	esac
 done < $timesfile
 

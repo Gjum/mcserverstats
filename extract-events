@@ -6,12 +6,10 @@ timesfile=times # pre-filtered joins/leaves/restarts
 rm "$timesfile" # do a full rescan, clear old results TODO incremental with make
 
 # go through all present logfiles
-for logfile in `ls -1 *.log.gz`
-do
+for logfile in `ls -1 *.log.gz`; do
 	date="`echo $logfile | cut -b-10`" # e.g. 2014-08-20
 	# only read lines with relevant info (joined/left/restart)
-	while read line
-	do
+	while read line; do
 		time="`echo $line | cut -b2-9`" # time the output was created, e.g. 01:23:45
 		seconds=`date -d "$date $time" +%s` # convert to seconds since epoch
 		action="`echo $line | grep -o '\(joined\|left\)'`" # only joined or left are bound to players
@@ -20,8 +18,7 @@ do
 	done < <(gzip -dc $logfile | grep '.*Server thread/INFO.* the game$' | grep -v '[<>]')
 	# was the server shut down? -> insert restart action
 	time="`gzip -dc $logfile | grep -E '^[^<>]* Stopping server$' | tail -n 1 | cut -b2-9`"
-	if [ -n "$time" ]
-	then
+	if [ -n "$time" ]; then
 		seconds=`date -d "$date $time" +%s` # convert to seconds since epoch
 		echo "$seconds restart" >> $timesfile
 	fi
