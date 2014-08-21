@@ -1,0 +1,56 @@
+#!/bin/bash
+
+timesfile=times
+
+online=
+jointimes=()
+slots=()
+
+leave() {
+	jointime="${jointimes["$name"]}"
+	if [ -z "$jointime" ]
+	then
+		echo "ERROR \"$name\" left without joining. \"$line\""
+	else
+		diff="$(( $seconds - $jointime ))"
+		online="`echo $online | sed "s/$name *//"`"
+		echo "$name was $diff sec on"
+		for slot in `seq $(($jointime / 60)) $(($seconds / 60))` # one interval each minute
+		do
+			slots["$slot"]="$name ${slots["$slot"]}"
+		done
+	fi
+	jointimes["$name"]=
+}
+
+while read line
+do
+	echo "=> $line"
+	seconds="`echo $line | cut -b1-10`"
+	action="`echo $line | cut -b12- | grep -o '^[^ ]*'`"
+	name="`echo $line | cut -b12- | grep -v restart | grep -o '[^ ]*$'`"
+	case $action in
+		joined)
+			online="$name $online"
+			jointimes["$name"]="$seconds"
+			;;
+		left)
+			leave
+			;;
+		restart)
+			echo "online='$online'"
+			if [ -n "$online" ]
+			then
+				for name in "$online" # overwrite the empty name field
+				do
+					leave
+				done
+				online=
+			fi
+			;;
+		*)
+			echo "ERROR Invalid action \"$action\". \"$line\""
+			;;
+	esac
+done < $timesfile
+
