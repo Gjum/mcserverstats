@@ -25,7 +25,7 @@ leave() {
 		diff="$(( $seconds - $jointime ))"
 		for slot in `seq $(($jointime / $slotsec)) $(($seconds / $slotsec))`; do
 			if [ -z "${slots["$slot"]}" ]; then
-				slots["$slot"]="$slot" # put time at beginning of slot
+				slots["$slot"]="$(( $slot * $slotsec ))" # put the time in seconds at the beginning of the slot
 			fi
 			if `echo "${slots["$slot"]}" | grep -qv "$name"`; then
 				slots["$slot"]="${slots["$slot"]} $name"
@@ -63,11 +63,17 @@ while read line; do
 	#if [ -n "$name" ]; then echo -e " ${cg}join[$name]=${cn}'${jointimes["$name"]}'"; else echo; fi
 done < $timesfile
 
-# print time slot occupations
-# TODO breaks at the first time nobody was on for an hour
+# format the slot contents: 1407874849 Sun 12.03.2014 12:34 gjum notch
+outarr= # stores all formatted filled slots, separated by newlines
 for slot in "${slots[@]}"; do
-	echo "$slot"
+	seconds="`echo $slot | grep -o '^[^ ]*'`"
+	humanreadabledate="`date -d @$seconds '+%a %d.%m.%Y %H:%M'`" # date format: Sun 12.03.2014 12:34
+	onlineplayers="`echo $slot | grep -o ' .*$'`"
+	outarr="$outarr\n$seconds ${cg}$humanreadabledate${cn}$onlineplayers"
 done
+
+# print time slot occupations
+echo -e $outarr | sort | grep -o '[^0-9 ].*$' # strip seconds from output
 
 exit 0
 
