@@ -7,17 +7,19 @@ logfile="$1"
 slotsec=3600 # 3600 seconds/hour, 86400 seconds/day
 if [ -n "$2" ]; then slotsec="$2"; fi
 
-# enable coloring
-cr="\e[1;49;31m"
-cg="\e[1;49;32m"
-cy="\e[1;49;33m"
-cb="\e[1;49;34m"
-cn="\e[0;0;0m"
+# coloring
+if test -t 1; then # output is a tty
+	cr="\e[1;49;31m"
+	cg="\e[1;49;32m"
+	cy="\e[1;49;33m"
+	cb="\e[1;49;34m"
+	cn="\e[0;0;0m"
+fi
 
 # {{{ init
 declare -A jointimes # holds the last time the player joined
 declare -A slots # holds the time and names of players online at that timeframe
-declare -A playtimes # holds the time each player has played during this log
+declare -A onlinetimes # holds the time each player has been online during this log
 
 online= # holds all online players
 
@@ -54,6 +56,11 @@ leave() {
 				slots["$slot"]="${slots["$slot"]} $name"
 			fi
 		done
+		# increase player's playtime
+		if [ -z "${onlinetimes["$name"]}" ]
+		then onlinetimes["$name"]=$(( $seconds - $jointime ))
+		else onlinetimes["$name"]=$(( $seconds - $jointime + ${onlinetimes["$name"]} ))
+		fi
 	fi
 	online="`echo $online | sed "s/$name *//"`"
 	jointimes["$name"]=$seconds # if not joining again, next leave will simulate a join at this leave (prevent errors when logging in from another location)
@@ -92,16 +99,14 @@ done
 # }}}
 
 # {{{ print results
-# format the slot contents: 1407874849 Sun 12.03.2014 12:34 gjum notch
-#formatted= # stores all formatted filled slots, separated by newlines
-#for slot in "${slots[@]}"; do
-	#formatted="$formatted\n$slot"
-#done
-
 # print time slot occupations
-printf '%s\n' "${slots[@]}" | sort | grep -o '[^0-9 ].*$' # strip seconds from output
+echo -e "`printf '%s\n' "${slots[@]}" | sort | grep -o '[^0-9 ].*$'`" # strip seconds from output
 
-# TODO print other stats, i.e. players' online times
+# print online times
+echo -e "\nOnline in seconds:\n"
+for name in "${!onlinetimes[@]}"; do
+	echo -e "${cg}${onlinetimes["$name"]}${cn} $name"
+done | sort -nr
 
 # }}}
 
