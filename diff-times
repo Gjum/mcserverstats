@@ -3,28 +3,37 @@
 
 # Configuration
 timesfile=times # pre-filtered joins/leaves/restarts
-slotsec=3600 # one slot each hour
+slotsec=3600 # 3600 seconds/hour, 86400 seconds/day
 
 # Init
-online= # holds all players that are online at a time
-jointimes=() # holds the last time the player joined
-slots=() # holds the names of players online at that timeframe
+declare -A jointimes # holds the last time the player joined
+declare -A slots # holds the time and names of players online at that timeframe
 
-# Adds the player to all slots he was online at, removes him from online players
+# Coloring
+cr="\e[1;49;31m"
+cg="\e[1;49;32m"
+cy="\e[1;49;33m"
+cb="\e[1;49;34m"
+cn="\e[0;0;0m"
+
+# Adds the player to all slots he was online at
 leave() {
 	jointime="${jointimes["$name"]}"
 	if [ -z "$jointime" ]; then
-		echo "ERROR \"$name\" left without joining. \"$line\""
+		echo -e "${cr}ERROR${cn} \"$name\" left without joining. \"$line\""
 	else
 		diff="$(( $seconds - $jointime ))"
-		online="`echo $online | sed "s/$name *//"`"
 		for slot in `seq $(($jointime / $slotsec)) $(($seconds / $slotsec))`; do
+			if [ -z "${slots["$slot"]}" ]; then
+				slots["$slot"]="$slot" # put time at beginning of slot
+			fi
 			if `echo "${slots["$slot"]}" | grep -qv "$name"`; then
-				slots["$slot"]="$name ${slots["$slot"]}"
+				slots["$slot"]="${slots["$slot"]} $name"
 			fi
 		done
 	fi
 	jointimes["$name"]=
+	#jointimes["$name"]="$seconds" # TODO catch bugs by changing this line
 }
 
 # Go through all pre-filtered joins/leaves/restarts
@@ -32,25 +41,26 @@ while read line; do
 	seconds="`echo $line | cut -b1-10`" # e.g. 1407874849
 	action="`echo $line | cut -b12- | grep -o '^[^ ]*'`" # joined/left/restart
 	name="`echo $line | cut -b12- | grep -v restart | grep -o '[^ ]*$'`" # player name w/o color escape codes
+	#echo -en "${cy}DEBUG${cn} $line \t-- ${cb}before:${cn} ${cg}jointimes=${cn}'${!jointimes[@]}' '${jointimes[@]}'"
+	#if [ -n "$name" ]; then echo -e " ${cg}join[$name]=${cn}'${jointimes["$name"]}'"; else echo; fi
 	case $action in
 		joined)
-			online="$name $online"
 			jointimes["$name"]="$seconds"
 			;;
 		left) leave
 			;;
 		restart)
-			if [ -n "$online" ]; then
-				for name in "$online" # overwrite the empty name field
-				do
+			for name in "${!jointimes[@]}"; do # overwrite the empty name field
+				if [ -n "${jointimes["$name"]}" ]; then # only leave if online
 					leave
-				done
-				online=
-			fi
+				fi
+			done
 			;;
-		*) echo "ERROR Invalid action \"$action\". \"$line\""
+		*) echo -e "${cr}ERROR${cn} Invalid action \"$action\". \"$line\""
 			;;
 	esac
+	#echo -en "${cy}DEBUG${cn} $line \t-- ${cb}after:${cn}  ${cg}jointimes=${cn}'${!jointimes[@]}' '${jointimes[@]}'"
+	#if [ -n "$name" ]; then echo -e " ${cg}join[$name]=${cn}'${jointimes["$name"]}'"; else echo; fi
 done < $timesfile
 
 # print time slot occupations
