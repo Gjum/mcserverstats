@@ -6,14 +6,12 @@ BASH utility to analyze the online times of players by scanning all available `.
 Installation
 ------------
 
-`$ cd YOUR_SERVER_DIR/logs && git clone https://github.com/Gjum/minecraft-log-analyzer.git .`
-
-**Make sure you copy the dot (.) at the end!**
+`$ cd YOUR_SERVER_DIR && git clone https://github.com/Gjum/minecraft-log-analyzer.git`
 
 Usage
 -----
 
-`$ ./extract-events && ./diff-times`
+`$ ./scan-all`
 
 Example output
 --------------

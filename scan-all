@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# arguments
+slotsec=3600 # 3600 seconds/hour, 86400 seconds/day
+if [ -n "$1" ]; then slotsec="$1"; fi
+
+# scan all present logfiles
+for logfile in `ls -1 ../logs/*.log.gz`; do
+	./scan-one "$logfile" "$slotsec"
+done
+
+exit 0
+
