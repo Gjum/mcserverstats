@@ -7,8 +7,14 @@ logfile="$1"
 slotsec=3600 # 3600 seconds/hour, 86400 seconds/day
 if [ -n "$2" ]; then slotsec="$2"; fi
 
+# Is output a tty?
+istty=false
+if test -t 1; then
+	istty=true
+fi
+
 # coloring
-if test -t 1; then # output is a tty
+if $istty; then
 	cr="\e[1;49;31m" # red
 	cg="\e[1;49;32m" # green
 	cy="\e[1;49;33m" # yellow
@@ -26,8 +32,8 @@ online= # holds all online players
 date="`echo $logfile | grep -Eo '[0-9-]{10}'`" # e.g. 2014-08-20
 
 freshstart=false # empty if the server started at the beginning of the log, also contains player names that previously joined/left after log start
-if `gzip -dc $logfile | head -n 1 | grep -q 'Starting'`
-then freshstart=
+if `gzip -dc $logfile | head -n 1 | grep -q 'Starting'`; then
+	freshstart=
 fi
 # }}}
 
@@ -48,16 +54,20 @@ leave() { # {{{ runs when a player left
 			if [ -z "${slots["$slot"]}" ]; then # put the time in seconds at the beginning of the slot
 				# slot contents format: 1407874849 Sun 12.03.2014 12:34 gjum notch
 				slottime=$(( $slot * $slotsec ))
-				humanreadabledate="`date -d @$slottime '+%a %d.%m.%Y %H:%M'`" # date format: Sun 12.03.2014 12:34
-				slots["$slot"]="$slottime ${cg}$humanreadabledate${cn}"
+				if $istty; then
+					humanreadabledate="`date -d @$slottime '+%a %d.%m.%Y %H:%M'`" # date format: Sun 12.03.2014 12:34
+					slots["$slot"]="$slottime ${cg}$humanreadabledate${cn}"
+				else
+					slots["$slot"]="$slottime"
+				fi
 			fi
 			if `echo "${slots["$slot"]}" | grep -qv "$name"`; then
 				slots["$slot"]="${slots["$slot"]} $name"
 			fi
 		done
 		# increase player's playtime
-		if [ -z "${onlinetimes["$name"]}" ]
-		then onlinetimes["$name"]=$(( $seconds - $jointime ))
+		if [ -z "${onlinetimes["$name"]}" ]; then
+			onlinetimes["$name"]=$(( $seconds - $jointime ))
 		else onlinetimes["$name"]=$(( $seconds - $jointime + ${onlinetimes["$name"]} ))
 		fi
 	fi
@@ -80,7 +90,6 @@ while read line; do
 	seconds=`date -d "$date $time" +%s` # convert to seconds since epoch
 	action="`echo $line | grep -o '\(joined\|left\)'`" # only joined or left are bound to players
 	name="`echo $line | cut -b34- | grep -o '^[^ ]*'`" # player name
-	#echo -en "DEBUG $line -- online:"; for i in "${!jointimes[@]}"; do if [ -n "${jointimes["$i"]}" ]; then echo -n " $i"; fi; done; echo
 	# {{{
 	case $action in
 		joined)
@@ -106,18 +115,29 @@ done
 # }}}
 
 # {{{ print results
-# print time slot occupations
-echo -e "`printf '%s\n' "${slots[@]}" | sort | grep -o '[^0-9 ].*$'`" # strip seconds from output
+if $istty; then
+	# print time slot occupations
+	echo -e "`printf '%s\n' "${slots[@]}" | sort | grep -o '[^0-9 ].*$'`" # strip seconds from output
 
-# print online times sorted descending
-out=
-echo -e "\n${cb}Online times:${cn}"
-for name in "${!onlinetimes[@]}"; do
-	seconds="${onlinetimes["$name"]}"
-	converted="`convertsecs $seconds`"
-	out="$out`printf '\n%5d seconds or %s' "$seconds" "$converted"` ${cy}$name${cn}"
-done
-echo -e "`echo "$out" | sort -nr`"
+	# print online times
+	out=
+	echo -e "\n${cb}Online times:${cn}"
+	for name in "${!onlinetimes[@]}"; do
+		seconds="${onlinetimes["$name"]}"
+		converted="`convertsecs $seconds`"
+		out="$out`printf '\n%5d seconds or %s' "$seconds" "$converted"` ${cy}$name${cn}"
+	done
+	echo -e "`echo "$out" | sort -nr`" # sort descending, natural numbers ordering
+else
+	# print time slot occupations
+	echo -e "`printf '%s\n' "${slots[@]}" | sort`"
+
+	# print online
+	echo '=== onlinetimes ==='
+	for name in "${!onlinetimes[@]}"; do
+		echo "$name $seconds"
+	done
+fi
 
 # }}}
 
