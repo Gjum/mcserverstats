@@ -9,11 +9,11 @@ if [ -n "$2" ]; then slotsec="$2"; fi
 
 # coloring
 if test -t 1; then # output is a tty
-	cr="\e[1;49;31m"
-	cg="\e[1;49;32m"
-	cy="\e[1;49;33m"
-	cb="\e[1;49;34m"
-	cn="\e[0;0;0m"
+	cr="\e[1;49;31m" # red
+	cg="\e[1;49;32m" # green
+	cy="\e[1;49;33m" # yellow
+	cb="\e[1;49;34m" # blue
+	cn="\e[0;0;0m"   # normal/reset
 fi
 
 # {{{ init
@@ -31,8 +31,7 @@ then freshstart=
 fi
 # }}}
 
-# {{{ leave()
-leave() {
+leave() { # {{{ runs when a player left
 	jointime="${jointimes["$name"]}"
 	if [ -z "$jointime" ]; then # player left without joining
 		if `[ -z "$freshstart" ] || echo "$freshstart" | grep -q "$name"`; then # the player did not join and the server was just started
@@ -67,6 +66,14 @@ leave() {
 }
 # }}}
 
+convertsecs() { # {{{ convert seconds into hours:minutes:seconds
+	h=`expr $1 / 3600`
+	m=`expr $1 % 3600 / 60`
+	s=`expr $1 % 60`
+	printf "%02d:%02d:%02d\n" $h $m $s
+}
+# }}}
+
 # only read lines with relevant info (joined/left/restart)
 while read line; do
 	time="`echo $line | cut -b2-9`" # time the output was created, e.g. 01:23:45
@@ -88,7 +95,7 @@ while read line; do
 			;;
 	esac
 	# }}}
-done < <(gzip -dc $logfile | grep '.*Server thread/INFO.* the game$' | grep -v '[<>]')
+done < <(gzip -dc $logfile | grep ' the game$' | grep 'Server thread/INFO' | sed "s/`printf '\247'`.//g" | grep -v '[<>]')
 
 # {{{ all players leave, because either the server was stopped or the day ended
 time="`gzip -dc $logfile | cut -b2-9 | grep -Eo '[0-9:]*' | tail -n 1`"
@@ -102,11 +109,15 @@ done
 # print time slot occupations
 echo -e "`printf '%s\n' "${slots[@]}" | sort | grep -o '[^0-9 ].*$'`" # strip seconds from output
 
-# print online times
-echo -e "\nOnline in seconds:\n"
+# print online times sorted descending
+out=
+echo -e "\n${cb}Online times:${cn}"
 for name in "${!onlinetimes[@]}"; do
-	echo -e "${cg}${onlinetimes["$name"]}${cn} $name"
-done | sort -nr
+	seconds="${onlinetimes["$name"]}"
+	converted="`convertsecs $seconds`"
+	out="$out`printf '\n%5d seconds or %s' "$seconds" "$converted"` ${cy}$name${cn}"
+done
+echo -e "`echo "$out" | sort -nr`"
 
 # }}}
 
