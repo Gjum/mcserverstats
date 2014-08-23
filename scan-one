@@ -87,7 +87,7 @@ leave() { # {{{ runs when a player left
 				fi
 			else # add player's entry at the end of the line
 				if $istty; then
-					slots["$slot"]="${slots["$slot"]} $name ($(($slotplaytime / 60))min)"
+					slots["$slot"]="${slots["$slot"]} $name ($((($slotplaytime + 59) / 60))min)"
 				else
 					slots["$slot"]="${slots["$slot"]} $name $slotplaytime"
 				fi
