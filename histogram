@@ -38,7 +38,7 @@ while read wline; do
 	while read line; do
 		time="`echo $line | cut -b16-17`"
 		if [[ $line == *$curuser* ]]; then
-			curline+=$' \xE2\x96\x88\xE2\x96\x88';
+			curline+=$' ||';
 			#ontime=$line | awk ...
 			#if [ $ontime -gt 45 ]; then
 			#	curline+=$' \xE2\x96\x88\xE2\x96\x88';
