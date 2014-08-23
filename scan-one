@@ -135,6 +135,7 @@ done < <(gzip -dc $logfile | grep ' the game$' | grep 'Server thread/INFO' | sed
 # }}}
 
 # {{{ all players leave, because either the server was stopped or the day ended
+# TODO 24:00 when server was not stopped
 time="`gzip -dc $logfile | cut -b2-9 | grep -Eo '[0-9:]*' | tail -n 1`"
 seconds=`date -d "$date $time" +%s` # convert to seconds since epoch
 for name in `echo "$online" | grep -o '[^ ].*[^ ]'`; do # overwrite the empty name field
