@@ -49,7 +49,7 @@ leave() { # {{{ runs when a player left
 	fi
 	if [ -n "$jointime" ]; then # leave if no error
 		# add the player to all slots he was online at
-		diff="$(( $seconds - $jointime ))"
+		difftime="$(( $seconds - $jointime ))"
 		for slot in `seq $(($jointime / $slotsec)) $(($seconds / $slotsec))`; do
 			if [ -z "${slots["$slot"]}" ]; then # put the time in seconds at the beginning of the slot
 				# slot contents format: 1407874849 Sun 12.03.2014 12:34 gjum notch
@@ -62,13 +62,13 @@ leave() { # {{{ runs when a player left
 				fi
 			fi
 			if `echo "${slots["$slot"]}" | grep -qv "$name"`; then
-				slots["$slot"]="${slots["$slot"]} $name"
+				slots["$slot"]="${slots["$slot"]} $name $difftime"
 			fi
 		done
 		# increase player's playtime
 		if [ -z "${onlinetimes["$name"]}" ]; then
-			onlinetimes["$name"]=$(( $seconds - $jointime ))
-		else onlinetimes["$name"]=$(( $seconds - $jointime + ${onlinetimes["$name"]} ))
+			onlinetimes["$name"]="$difftime"
+		else onlinetimes["$name"]=$(( $difftime + ${onlinetimes["$name"]} ))
 		fi
 	fi
 	online="`echo $online | sed "s/$name *//"`"
