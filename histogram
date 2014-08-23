@@ -1,0 +1,62 @@
+#/bin/bash
+# reads a provided "scanfile" and plots it as a histogram using unicode
+# by HarHarLinks
+
+let column=0;
+scanfile="$1"
+whitelist="$2"
+curline="";
+
+# coloring
+if test -t 1; then
+        cr="\e[1;49;31m" # red
+        cg="\e[1;49;32m" # green
+        cy="\e[1;49;33m" # yellow
+        cb="\e[1;49;34m" # blue
+        cn="\e[0;0;0m"   # normal/reset
+fi
+
+while read wline; do
+	curuser=$wline;
+	curline=$cn$wline;
+	if [ ${#curuser} -gt 9 ]; then
+		curline+='\t|';
+	else curline+='\t\t|';
+	fi
+	case "$curuser" in
+	"Offlinegott" | "Moqtah_Laila")
+		curline+=$cg;
+		;;
+	"gjum")
+		curline+=$cb;
+		;;
+	"HHL")
+		curline+=$cy;
+		;;
+	esac
+	
+	while read line; do
+		time="`echo $line | cut -b16-17`"
+		if [[ $line == *$curuser* ]]; then
+			curline+=$' \xE2\x96\x88\xE2\x96\x88';
+			#ontime=$line | awk ...
+			#if [ $ontime -gt 45 ]; then
+			#	curline+=$' \xE2\x96\x88\xE2\x96\x88';
+			#fi
+			#if [ $ontime -lt 45 && $ontime -gt 15 ]; then
+			#	curline+=$' \xE2\x96\x84\xE2\x96\x84';
+			#fi
+			#if [ $ontime -lt 15 ]; then
+			#	curline+=$' __';
+			#fi
+
+			#half: \xE2\x96\x84
+			#full: \xE2\x96\x88, 
+		else curline+="   ";
+		fi
+	done < <(cat $scanfile | grep "2014")
+	echo -e "$curline";
+
+done < <(cat $whitelist)
+echo -e $cn$'time\t\t| 00 01 02 03 10 11 12 13 14 15 16 17 18 19 20 21 22 23'
+exit 0
