@@ -40,11 +40,29 @@ while read curuser; do
 				seconds="`echo "$line" | grep -o " $curuser [0-9]*" | cut -d' ' -f3`"
 				ontime="$(( $seconds / 60 ))"
 				full='\xE2\x96\x88'
+				seveneights='\xE2\x96\x87'
+				threequaters='\xE2\x96\x86'
+				fiveeights='\xE2\x96\x85'
 				half='\xE2\x96\x84'
-				if [ $ontime -gt 45 ]; then
+				threeeights='\xE2\x96\x83'
+				quarter='\xE2\x96\x82'
+				eigth='\xE2\x96\x82'
+				if [ $ontime -gt 56 ]; then
 				curline+=" $full$full"
-				elif [ $ontime -gt 15 ]; then
+				elif [ $ontime -gt 49 ]; then
+					curline+=" $seveneights$seveneights";
+				elif [ $ontime -gt 42 ]; then
+					curline+=" $threequarters$threequarters";
+				elif [ $ontime -gt 35 ]; then
+					curline+=" $fiveeights$fiveeights";
+				elif [ $ontime -gt 28 ]; then
 					curline+=" $half$half";
+				elif [ $ontime -gt 21 ]; then
+					curline+=" $threeeights$threeeights";
+				elif [ $ontime -gt 14 ]; then
+					curline+=" $quarter$quarter";
+				elif [ $ontime -gt 7 ]; then
+					curline+=" $eigth$eigth";
 				else
 					curline+=' __';
 				fi
