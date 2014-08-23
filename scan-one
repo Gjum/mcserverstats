@@ -26,6 +26,7 @@ fi #}}}
 declare -A jointimes # last time the player joined
 declare -A slots # time and names of players online at that timeframe
 declare -A onlinetimes # total time each player has been online during this log
+declare -A onlinespans # times at which each player joined/left
 
 online= # holds all online players
 
@@ -49,6 +50,11 @@ leave() { # {{{ runs when a player left
 	fi
 	# }}}
 	if [ -n "$jointime" ]; then # leave if no error
+		# add entry to onlinespans
+		if [ -z "${onlinespans["$name"]}" ]; then # onlinespan of this player is empty, fill with name
+			onlinespans["$name"]="$name"
+		fi
+		onlinespans["$name"]+=":$jointime-$seconds"
 		# add the player to all slots he was online at
 		for slot in `seq $(($jointime / $slotsec)) $(($seconds / $slotsec))`; do
 			slottime=$(( $slot * $slotsec ))
@@ -141,6 +147,8 @@ if $istty; then
 	# print time slot occupations
 	echo -e "`printf '%s\n' "${slots[@]}" | sort | grep -o '[^0-9 ].*$'`" # strip seconds from output
 
+	# omit times at which each player joined/left
+
 	# print online times
 	out=
 	echo -e "\n${cb}Online times:${cn}"
@@ -154,7 +162,13 @@ else
 	# print time slot occupations
 	echo -e "`printf '%s\n' "${slots[@]}" | sort`"
 
-	# print online
+	# print times at which each player joined/left
+	echo '=== timespans ==='
+	for line in "${onlinespans[@]}"; do
+		echo "$line"
+	done
+
+	# print online times
 	echo '=== onlinetimes ==='
 	for name in "${!onlinetimes[@]}"; do
 		echo "$name $seconds"
