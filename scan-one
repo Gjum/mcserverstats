@@ -62,7 +62,7 @@ leave() { # {{{ runs when a player left
 				fi
 			fi
 			if `echo "${slots["$slot"]}" | grep -qv "$name"`; then
-				slots["$slot"]="${slots["$slot"]} $name $difftime"
+				slots["$slot"]="${slots["$slot"]} $name ($(($difftime / 60))min)"
 			fi
 		done
 		# increase player's playtime
