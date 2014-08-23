@@ -7,25 +7,25 @@ logfile="$1"
 slotsec=3600 # 3600 seconds/hour, 86400 seconds/day
 if [ -n "$2" ]; then slotsec="$2"; fi
 
-# Is output a tty?
+# {{{ Is output a tty?
 istty=false
 if test -t 1; then
 	istty=true
-fi
+fi # }}}
 
-# coloring
+# {{{ coloring
 if $istty; then
 	cr="\e[1;49;31m" # red
 	cg="\e[1;49;32m" # green
 	cy="\e[1;49;33m" # yellow
 	cb="\e[1;49;34m" # blue
 	cn="\e[0;0;0m"   # normal/reset
-fi
+fi #}}}
 
 # {{{ init
-declare -A jointimes # holds the last time the player joined
-declare -A slots # holds the time and names of players online at that timeframe
-declare -A onlinetimes # holds the time each player has been online during this log
+declare -A jointimes # last time the player joined
+declare -A slots # time and names of players online at that timeframe
+declare -A onlinetimes # total time each player has been online during this log
 
 online= # holds all online players
 
@@ -61,8 +61,7 @@ leave() { # {{{ runs when a player left
 				else
 					slots["$slot"]="$slottime"
 				fi
-			fi
-			# }}}
+			fi # }}}
 			# {{{ add player name and playtime to slot
 			slotplaystart="$slottime"
 			slotplayend="$(( $slottime + $slotsec ))"
@@ -98,24 +97,22 @@ leave() { # {{{ runs when a player left
 	fi
 	online="`echo $online | sed "s/$name *//"`"
 	jointimes["$name"]=$seconds # if not joining again, next leave will simulate a join at this leave (prevent errors when logging in from another location)
-}
-# }}}
+} # }}}
 
 convertsecs() { # {{{ convert seconds into hours:minutes:seconds
 	h=`expr $1 / 3600`
 	m=`expr $1 % 3600 / 60`
 	s=`expr $1 % 60`
 	printf "%02d:%02d:%02d\n" $h $m $s
-}
-# }}}
+} # }}}
 
-# only read lines with relevant info (joined/left/restart)
+# {{{ only read lines with relevant info (joined/left/restart)
 while read line; do
 	time="`echo $line | cut -b2-9`" # time the output was created, e.g. 01:23:45
 	seconds=`date -d "$date $time" +%s` # convert to seconds since epoch
 	action="`echo $line | grep -o '\(joined\|left\)'`" # only joined or left are bound to players
 	name="`echo $line | cut -b34- | grep -o '^[^ ]*'`" # player name
-	# {{{
+	# {{{ act upon action
 	case $action in
 		joined)
 			if echo "$online" | grep -qv "$name"; then # player is not already online
@@ -127,9 +124,9 @@ while read line; do
 			;;
 		*) echo -e "${cr}ERROR${cn} Invalid action \"$action\". \"$line\""
 			;;
-	esac
-	# }}}
+	esac # }}}
 done < <(gzip -dc $logfile | grep ' the game$' | grep 'Server thread/INFO' | sed "s/`printf '\247'`.//g" | grep -v '[<>]')
+# }}}
 
 # {{{ all players leave, because either the server was stopped or the day ended
 time="`gzip -dc $logfile | cut -b2-9 | grep -Eo '[0-9:]*' | tail -n 1`"
@@ -163,7 +160,6 @@ else
 		echo "$name $seconds"
 	done
 fi
-
 # }}}
 
 exit 0
