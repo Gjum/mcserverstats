@@ -13,7 +13,7 @@ Usage
 -----
 
 `$ ./scan-all`
-`$ ./histogram ../path/to/logfile.log.gz.scanned /path/to/list/of/usersÂ´Â
+`$ ./histogram ../path/to/logfile.log.gz.scanned /path/to/list/of/users`
 
 Example output
 --------------
@@ -29,8 +29,8 @@ Sun 17.08.2014 00:00 HHL Offlinegott
 ```
 
 ```
-Offlinegott	  | ||                      || || || || || || || || || ||
-HHL           |                                           || || || ||
-gjum	    	|                   || || || || || ||             || ||
-time	    	| 00 01 02 03 10 11 12 13 14 15 16 17 18 19 20 21 22 23
+Offlinegott	| ||                      || || || || || || || || || ||
+HHL         |                                           || || || ||
+gjum	   	|                   || || || || || ||             || ||
+time	   	| 00 01 02 03 10 11 12 13 14 15 16 17 18 19 20 21 22 23
 ```
