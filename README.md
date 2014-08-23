@@ -13,6 +13,7 @@ Usage
 -----
 
 `$ ./scan-all`
+
 `$ ./histogram ../path/to/logfile.log.gz.scanned /path/to/list/of/users`
 
 Example output
