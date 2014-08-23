@@ -39,7 +39,7 @@ fi
 
 leave() { # {{{ runs when a player left
 	jointime="${jointimes["$name"]}"
-	if [ -z "$jointime" ]; then # player left without joining
+	if [ -z "$jointime" ]; then # {{{ player left without joining
 		if `[ -z "$freshstart" ] || echo "$freshstart" | grep -q "$name"`; then # the player did not join and the server was just started
 			echo -e "${cr}ERROR${cn} `date -d @$seconds '+%a %d.%m.%Y %H:%M'` \"$name\" left without joining"
 		else # assume the server was started yesterday
@@ -47,13 +47,14 @@ leave() { # {{{ runs when a player left
 			freshstart="$freshstart $name"
 		fi
 	fi
+	# }}}
 	if [ -n "$jointime" ]; then # leave if no error
 		# add the player to all slots he was online at
-		difftime="$(( $seconds - $jointime ))"
 		for slot in `seq $(($jointime / $slotsec)) $(($seconds / $slotsec))`; do
-			if [ -z "${slots["$slot"]}" ]; then # put the time in seconds at the beginning of the slot
-				# slot contents format: 1407874849 Sun 12.03.2014 12:34 gjum notch
-				slottime=$(( $slot * $slotsec ))
+			slottime=$(( $slot * $slotsec ))
+			if [ -z "${slots["$slot"]}" ]; then # {{{ slot is empty, fill it with its date/time
+				# human readable (tty) format: 1407874849 Sun 12.03.2014 12:34 gjum (42min) notch (23min)
+				# machine readable (non-tty) format: 1407874849 Sun 12.03.2014 12:34 gjum (42min) notch (23min)
 				if $istty; then
 					humanreadabledate="`date -d @$slottime '+%a %d.%m.%Y %H:%M'`" # date format: Sun 12.03.2014 12:34
 					slots["$slot"]="$slottime ${cg}$humanreadabledate${cn}"
@@ -61,11 +62,35 @@ leave() { # {{{ runs when a player left
 					slots["$slot"]="$slottime"
 				fi
 			fi
-			if `echo "${slots["$slot"]}" | grep -qv "$name"`; then
-				slots["$slot"]="${slots["$slot"]} $name ($(($difftime / 60))min)"
+			# }}}
+			# {{{ add player name and playtime to slot
+			slotplaystart="$slottime"
+			slotplayend="$(( $slottime + $slotsec ))"
+			[ "$slotplaystart" -lt "$jointime" ] && slotplaystart="$jointime"
+			[ "$slotplayend" -gt "$seconds" ] && slotplayend="$seconds"
+			slotplaytime=$(( $slotplayend - $slotplaystart )) # the time the player played during this slot
+			if `echo "${slots["$slot"]}" | grep -q "$name"`; then
+				# player was already online during this slot, add times together
+				if $istty; then
+					addtime="`echo "${slots["$slot"]}" | grep -o " $name ([0-9]*" | cut -d'(' -f2`"
+					slotwithoutold="`echo "${slots["$slot"]}" | sed "s/ $name ([0-9]*min)//"`"
+					slots["$slot"]="$slotwithoutold $name ($(( $slotplaytime / 60 + $addtime ))min)"
+				else
+					addtime="`echo "${slots["$slot"]}" | grep -o " $name [0-9]*" | cut -d' ' -f3`"
+					slotwithoutold="`echo "${slots["$slot"]}" | sed "s/ $name [0-9]*//"`"
+					slots["$slot"]="$slotwithoutold $name $(( $slotplaytime + $addtime ))"
+				fi
+			else # add player's entry at the end of the line
+				if $istty; then
+					slots["$slot"]="${slots["$slot"]} $name ($(($slotplaytime / 60))min)"
+				else
+					slots["$slot"]="${slots["$slot"]} $name $slotplaytime"
+				fi
 			fi
+			# }}}
 		done
 		# increase player's playtime
+		difftime="$(( $seconds - $jointime ))"
 		if [ -z "${onlinetimes["$name"]}" ]; then
 			onlinetimes["$name"]="$difftime"
 		else onlinetimes["$name"]=$(( $difftime + ${onlinetimes["$name"]} ))
