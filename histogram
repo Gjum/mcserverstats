@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 # reads a provided "scanfile" and plots it as a histogram using unicode
 # by HarHarLinks
 
@@ -9,20 +9,16 @@ curline="";
 
 # coloring
 if test -t 1; then
-        cr="\e[1;49;31m" # red
-        cg="\e[1;49;32m" # green
-        cy="\e[1;49;33m" # yellow
-        cb="\e[1;49;34m" # blue
-        cn="\e[0;0;0m"   # normal/reset
+	cr="\e[1;49;31m" # red
+	cg="\e[1;49;32m" # green
+	cy="\e[1;49;33m" # yellow
+	cb="\e[1;49;34m" # blue
+	cn="\e[0;0;0m"   # normal/reset
 fi
 
 while read wline; do
 	curuser=$wline;
-	curline=$cn$wline;
-	if [ ${#curuser} -gt 9 ]; then
-		curline+='\t|';
-	else curline+='\t\t|';
-	fi
+	curline="`printf '%16s' $curuser` |";
 	case "$curuser" in
 	"Offlinegott" | "Moqtah_Laila")
 		curline+=$cg;
@@ -34,29 +30,27 @@ while read wline; do
 		curline+=$cy;
 		;;
 	esac
-	
 	while read line; do
-		time="`echo $line | cut -b16-17`"
-		if [[ $line == *$curuser* ]]; then
-			curline+=$' ||';
-			#ontime=$line | awk ...
+		if [ "$line" == '=== onlinetimes ===' ]; then
+			break
+		fi
+		if `echo "$line" | grep -q " $curuser"`; then
+			#seconds="`echo "$line" | awk ...`" # TODO put time this player played during this slot after its name
+			#ontime="$(( $seconds / 60 ))"
+			full='\xE2\x96\x88'
+			#half='\xE2\x96\x84'
 			#if [ $ontime -gt 45 ]; then
-			#	curline+=$' \xE2\x96\x88\xE2\x96\x88';
+				curline+=" $full$full"
+			#elif [ $ontime -gt 15 ]; then
+			#	curline+=' $half$half';
+			#else
+			#	curline+=' __';
 			#fi
-			#if [ $ontime -lt 45 && $ontime -gt 15 ]; then
-			#	curline+=$' \xE2\x96\x84\xE2\x96\x84';
-			#fi
-			#if [ $ontime -lt 15 ]; then
-			#	curline+=$' __';
-			#fi
-
-			#half: \xE2\x96\x84
-			#full: \xE2\x96\x88, 
 		else curline+="   ";
 		fi
-	done < <(cat $scanfile | grep "2014")
-	echo -e "$curline";
+	done < "$scanfile"
+	echo -e "$curline$cn";
 
 done < <(cat $whitelist)
-echo -e $cn$'time\t\t| 00 01 02 03 10 11 12 13 14 15 16 17 18 19 20 21 22 23'
+echo "            time | 00 01 02 03 10 11 12 13 14 15 16 17 18 19 20 21 22 23"
 exit 0
