@@ -171,6 +171,7 @@ else
 	# print online times
 	echo '=== onlinetimes ==='
 	for name in "${!onlinetimes[@]}"; do
+		seconds="${onlinetimes["$name"]}"
 		echo "$name $seconds"
 	done
 fi
