@@ -33,9 +33,10 @@ while read curuser; do
 		esac
 		# read the scanfile
 		while read line; do
-			if [[ "$line" == ===\ * ]]; then # end of relevant lines
+			if [[ "$line" == ===* ]]; then # end of relevant lines
 				break
 			fi
+			if [ -z "$line" ]; then continue; fi
 			if $filltimeline; then # add the hour to the timeline
 				linetime="`echo "$line" | grep -o "^[^ ]*"`"
 				slothour="`date -d "@$linetime" +%H`"
