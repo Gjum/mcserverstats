@@ -13,21 +13,7 @@ if test -t 1; then
 	istty=true
 fi # }}}
 
-# {{{ coloring
-if $istty; then
-	cr="\e[1;49;31m" # red
-	cg="\e[1;49;32m" # green
-	cy="\e[1;49;33m" # yellow
-	cb="\e[1;49;34m" # blue
-	cn="\e[0;0;0m"   # normal/reset
-fi #}}}
-
-convertsecs() { # {{{ convert seconds into hours:minutes:seconds
-	h=`expr $1 / 3600`
-	m=`expr $1 % 3600 / 60`
-	s=`expr $1 % 60`
-	printf "%02d:%02d:%02d\n" $h $m $s
-} # }}}
+source utils # include utility functions
 
 # {{{ init
 declare -A jointimes # last time the player joined
@@ -64,7 +50,7 @@ leave() { # {{{ player left, process the timespan he was online at
 		if [ -z "${onlinespans["$name"]}" ]; then # onlinespan of this player is empty, fill with name
 			onlinespans["$name"]="$name"
 		fi
-		onlinespans["$name"]+=":$jointime-$seconds"
+		onlinespans["$name"]+=" $jointime-$seconds"
 		# add the player to all slots he was online at
 		for slot in `seq $(($jointime / $slotsec)) $(($seconds / $slotsec))`; do
 			slottime=$(( $slot * $slotsec ))

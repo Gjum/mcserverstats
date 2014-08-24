@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# {{{ coloring
+if $istty; then
+	cr="\e[1;49;31m" # red
+	cg="\e[1;49;32m" # green
+	cy="\e[1;49;33m" # yellow
+	cb="\e[1;49;34m" # blue
+	cn="\e[0;0;0m"   # normal/reset
+fi #}}}
+
+convertsecs() { # {{{ convert seconds into hours:minutes:seconds
+	h=`expr $1 / 3600`
+	m=`expr $1 % 3600 / 60`
+	s=`expr $1 % 60`
+	printf "%02d:%02d:%02d\n" $h $m $s
+} # }}}
+
