@@ -19,16 +19,16 @@ filltimeline=true # true for the first player
 # print histogram line for each user
 while read curuser; do
 	if [ -n "$curuser" ]; then # catch empty lines
-		curline="`printf '%16s' $curuser` |";
+		curline="`printf '%16s' $curuser` |"
 		case "$curuser" in
 			"Offlinegott" | "Moqtah_Laila")
-				curline+=$cg;
+				curline+="$cg"
 				;;
 			"gjum")
-				curline+=$cb;
+				curline+="$cb"
 				;;
 			"HHL")
-				curline+=$cy;
+				curline+="$cy"
 				;;
 		esac
 		# read the scanfile
@@ -45,39 +45,40 @@ while read curuser; do
 			if `echo "$line" | grep -q " $curuser"`; then
 				seconds="`echo "$line" | grep -o " $curuser [0-9]*" | cut -d' ' -f3`"
 				ontime="$(( $seconds / 60 ))"
-				full='\xE2\x96\x88'
-				seveneights='\xE2\x96\x87'
-				threequaters='\xE2\x96\x86'
-				fiveeights='\xE2\x96\x85'
-				half='\xE2\x96\x84'
-				threeeights='\xE2\x96\x83'
-				quarter='\xE2\x96\x82'
-				eigth='\xE2\x96\x82'
+				barxxxxxxxx='\xE2\x96\x88' # full
+				barxxxxxxxo='\xE2\x96\x87' # seveneights
+				barxxxxxxoo='\xE2\x96\x86' # threequaters
+				barxxxxxooo='\xE2\x96\x85' # fiveeights
+				barxxxxoooo='\xE2\x96\x84' # half
+				barxxxooooo='\xE2\x96\x83' # threeeights
+				barxxoooooo='\xE2\x96\x82' # quarter
+				barxooooooo='\xE2\x96\x82' # eigth
 				if [ $ontime -gt 56 ]; then
-					curline+=" $full$full"
+					curline+=" $barxxxxxxxx$barxxxxxxxx"
 				elif [ $ontime -gt 49 ]; then
-					curline+=" $seveneights$seveneights";
+					curline+=" $barxxxxxxxo$barxxxxxxxo"
 				elif [ $ontime -gt 42 ]; then
-					curline+=" $threequarters$threequarters";
+					curline+=" $barxxxxxxoo$barxxxxxxoo"
 				elif [ $ontime -gt 35 ]; then
-					curline+=" $fiveeights$fiveeights";
+					curline+=" $barxxxxxooo$barxxxxxooo"
 				elif [ $ontime -gt 28 ]; then
-					curline+=" $half$half";
+					curline+=" $barxxxxoooo$barxxxxoooo"
 				elif [ $ontime -gt 21 ]; then
-					curline+=" $threeeights$threeeights";
+					curline+=" $barxxxooooo$barxxxooooo"
 				elif [ $ontime -gt 14 ]; then
-					curline+=" $quarter$quarter";
+					curline+=" $barxxoooooo$barxxoooooo"
 				elif [ $ontime -gt 7 ]; then
-					curline+=" $eigth$eigth";
+					curline+=" $barxooooooo$barxooooooo"
 				else
-					curline+=' __';
+					curline+=' __'
 				fi
-			else curline+="   ";
+			else curline+='   '
 			fi
 		done < "$scanfile"
-		echo -e "$curline$cn";
+		echo -e "$curline$cn"
 		filltimeline=false
 	fi
-done < $whitelist
+done < "$whitelist"
 echo "            time |$timeline"
+
 exit 0
