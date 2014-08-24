@@ -1,4 +1,5 @@
 #!/bin/bash
+# scans all unscanned logfiles, i.e. *.log.gz and latest.log
 
 # arguments
 slotsec=3600 # 3600 seconds/hour, 86400 seconds/day
@@ -7,7 +8,7 @@ if [ -n "$1" ]; then slotsec="$1"; fi
 suffix=.scanned
 
 # scan all compressed logfiles
-for logfile in `ls -1 ../logs/*.log.gz`; do
+for logfile in ../logs/*.log.gz; do
 	scanfile="`echo "$logfile" | sed "s/.log.gz$/$suffix/g"`"
 	if [ ! -f $scanfile ]; then
 		./scan-one "$logfile" "$slotsec" > "$scanfile"
@@ -15,8 +16,8 @@ for logfile in `ls -1 ../logs/*.log.gz`; do
 done
 
 # if present, scan latest.log
-if [ -f latest.log ]; then
-	./scan-one "latest.log" "$slotsec" > "latest$suffix"
+if [ -f ../logs/latest.log ]; then
+	./scan-one "../logs/latest.log" "$slotsec" > "latest$suffix"
 fi
 
 exit 0
