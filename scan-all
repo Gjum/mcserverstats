@@ -4,12 +4,13 @@
 slotsec=3600 # 3600 seconds/hour, 86400 seconds/day
 if [ -n "$1" ]; then slotsec="$1"; fi
 
-suffix=.scanned
+suffix=.log.gz.scanned
 
 # scan all present logfiles
 for logfile in `ls -1 ../logs/*.log.gz`; do
-	if [ ! -f $logfile$suffix ]; then
-		./scan-one "$logfile" "$slotsec" > "$logfile$suffix"
+	scanfile="`echo "$logfile" | sed "s/.log.gz$/$suffix/g"`"
+	if [ ! -f $scanfile ]; then
+		./scan-one "$logfile" "$slotsec" > "$scanfile"
 	fi
 done
 
