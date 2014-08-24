@@ -1,5 +1,5 @@
 #!/bin/bash
-# Scans one logfile and outputs the slot occupancies and play times.
+# Scans one logfile and outputs various play time statistics.
 # Copyright (c) 2014 Gjum. All rights reserved.
 
 # arguments
@@ -22,6 +22,13 @@ if $istty; then
 	cn="\e[0;0;0m"   # normal/reset
 fi #}}}
 
+convertsecs() { # {{{ convert seconds into hours:minutes:seconds
+	h=`expr $1 / 3600`
+	m=`expr $1 % 3600 / 60`
+	s=`expr $1 % 60`
+	printf "%02d:%02d:%02d\n" $h $m $s
+} # }}}
+
 # {{{ init
 declare -A jointimes # last time the player joined
 declare -A slots # time and names of players online at that timeframe
@@ -38,7 +45,7 @@ if `gzip -dc $logfile | head -n 1 | grep -q 'Starting'`; then
 fi
 # }}}
 
-leave() { # {{{ runs when a player left
+leave() { # {{{ player left, process the timespan he was online at
 	jointime="${jointimes["$name"]}"
 	if [ -z "$jointime" ]; then # {{{ player left without joining
 		if `[ -z "$freshstart" ] || echo "$freshstart" | grep -q "$name"`; then # the player did not join and the server was just started
@@ -105,21 +112,13 @@ leave() { # {{{ runs when a player left
 	jointimes["$name"]=$seconds # if not joining again, next leave will simulate a join at this leave (prevent errors when logging in from another location)
 } # }}}
 
-convertsecs() { # {{{ convert seconds into hours:minutes:seconds
-	h=`expr $1 / 3600`
-	m=`expr $1 % 3600 / 60`
-	s=`expr $1 % 60`
-	printf "%02d:%02d:%02d\n" $h $m $s
-} # }}}
-
-# {{{ only read lines with relevant info (joined/left/restart)
+# {{{ read the lines with relevant info (joined/left/restart)
 while read line; do
 	time="`echo $line | cut -b2-9`" # time the output was created, e.g. 01:23:45
 	seconds=`date -d "$date $time" +%s` # convert to seconds since epoch
-	action="`echo $line | grep -o '\(joined\|left\)'`" # only joined or left are bound to players
+	action="`echo $line | grep -o '\(joined\|left\)'`"
 	name="`echo $line | cut -b34- | grep -o '^[^ ]*'`" # player name
-	# {{{ act upon action
-	case $action in
+	case $action in # {{{
 		joined)
 			if echo "$online" | grep -qv "$name"; then # player is not already online
 				jointimes["$name"]="$seconds"
@@ -134,7 +133,7 @@ while read line; do
 done < <(gzip -dc $logfile | grep ' the game$' | grep 'Server thread/INFO' | sed "s/`printf '\247'`.//g" | grep -v '[<>]')
 # }}}
 
-# {{{ all players leave, because either the server was stopped or the day ended
+# {{{ all players leave
 # TODO 24:00 when server was not stopped
 time="`gzip -dc $logfile | cut -b2-9 | grep -Eo '[0-9:]*' | tail -n 1`"
 seconds=`date -d "$date $time" +%s` # convert to seconds since epoch
