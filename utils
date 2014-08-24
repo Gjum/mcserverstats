@@ -1,5 +1,8 @@
 #!/bin/bash
 
+suffix=.scanned
+logfilespath='../logs/'
+
 # {{{ coloring
 if $istty; then
 	cr="\e[1;49;31m" # red

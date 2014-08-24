@@ -1,7 +1,6 @@
 #!/bin/bash
 # creates a list of times every player in the whitelist has played
 
-suffix=.scanned
 source utils # include utility functions
 
 # init
@@ -13,9 +12,9 @@ if [ -n "$1" ]; then
 	today="$1"
 fi
 if [ "$today" == `date +%Y-%m-%d` ]; then
-	filelist="$today*$suffix latest$suffix"
+	filelist="$logfilespath/$today*$suffix $logfilespath/latest$suffix"
 else
-	filelist="$today*$suffix"
+	filelist="$logfilespath/$today*$suffix"
 fi
 
 slotsec=3600 # 3600 seconds/hour, 86400 seconds/day

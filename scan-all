@@ -5,19 +5,19 @@
 slotsec=3600 # 3600 seconds/hour, 86400 seconds/day
 if [ -n "$1" ]; then slotsec="$1"; fi
 
-suffix=.scanned
+source utils
 
 # scan all compressed logfiles
-for logfile in ../logs/*.log.gz; do
+for logfile in $logfilespath/*.log.gz; do
 	scanfile="`echo "$logfile" | sed "s/.log.gz$/$suffix/g"`"
 	if [ ! -f $scanfile ]; then
-		./scan-one "$logfile" "$slotsec" > "$scanfile"
+		./scan-one "$logfile" "$slotsec" > "$logfilespath/$scanfile"
 	fi
 done
 
 # if present, scan latest.log
-if [ -f ../logs/latest.log ]; then
-	./scan-one "../logs/latest.log" "$slotsec" > "latest$suffix"
+if [ -f "$logfilespath/latest.log" ]; then
+	./scan-one "$logfilespath/latest.log" "$slotsec" > "$logfilespath/latest$suffix"
 fi
 
 exit 0

@@ -2,27 +2,20 @@
 # reads all scanfiles of a given day and plots it as a histogram using unicode
 # by HarHarLinks
 
+source utils # include utility functions
+
 # arguments
 today="`date +%Y-%m-%d`" # year-month-day of the logfiles to read
 if [ -n "$1" ]; then
 	today="$1"
 fi
 if [ "$today" == `date +%Y-%m-%d` ]; then
-	filelist="$today*$suffix latest$suffix"
+	filelist="$logfilespath/$today*$suffix $logfilespath/latest$suffix"
 else
-	filelist="$today*$suffix"
+	filelist="$logfilespath/$today*$suffix"
 fi
 
 whitelist="$2"
-
-# coloring
-if test -t 1; then
-	cr="\e[1;49;31m" # red
-	cg="\e[1;49;32m" # green
-	cy="\e[1;49;33m" # yellow
-	cb="\e[1;49;34m" # blue
-	cn="\e[0;0;0m"   # normal/reset
-fi
 
 filltimeline=true # true for the first player
 
