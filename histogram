@@ -77,7 +77,7 @@ while read curuser; do
 			fi
 		done < "$scanfile"
 		echo -e "$curline$cn"
-		filltimeline=false
+		filltimeline=false;
 	fi
 done < "$whitelist"
 echo "            time |$timeline"
