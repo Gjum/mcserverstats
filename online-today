@@ -1,0 +1,54 @@
+#!/bin/bash
+# creates a list of times every player in the whitelist has played
+
+suffix=.scanned
+source utils # include utility functions
+
+# init
+declare -A onlinetoday # seconds each player was online today
+
+# arguments
+today="`date +%Y-%m-%d`" # year-month-day of the logfiles to read
+if [ -n "$1" ]; then
+	today="$1"
+fi
+if [ "$today" == `date +%Y-%m-%d` ]; then
+	filelist="$today*$suffix latest$suffix"
+else
+	filelist="$today*$suffix"
+fi
+
+slotsec=3600 # 3600 seconds/hour, 86400 seconds/day
+if [ -n "$2" ]; then slotsec="$2"; fi
+
+# {{{ look at all logfiles of today
+for scanfile in $filelist; do
+	readthisline=false # skip all lines before and including the onlinetimes marker
+	# for each player, add the online time
+	while read line; do
+		if $readthisline; then
+			if [[ "$line" == ===* ]]; then
+				break # all relevant lines scanned
+			fi
+			name="`echo "$line" | cut -d' ' -f1`"
+			seconds="`echo "$line" | cut -d' ' -f2`"
+			if [ -z "${onlinetoday["$name"]}" ]; then
+				onlinetoday["$name"]=$seconds
+			else
+				onlinetoday["$name"]=$(( $seconds + ${onlinetoday["$name"]} ))
+			fi
+		fi
+		if [[ "$line" == ===\ onlinetimes\ === ]]; then
+			readthisline=true
+		fi
+	done < "$scanfile"
+done # }}}
+
+# {{{ print results
+for name in "${!onlinetoday[@]}"; do
+	printf '%-16s %s\n' "$name" "`convertsecs "${onlinetoday["$name"]}"`"
+done
+# }}}
+
+exit 0
+
