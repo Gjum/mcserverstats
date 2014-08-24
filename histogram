@@ -33,7 +33,7 @@ while read curuser; do
 		esac
 		# read the scanfile
 		while read line; do
-			if `echo "$line" | grep -q '^=== '`; then # end of relevant lines
+			if [[ "$line" == ===\ * ]]; then # end of relevant lines
 				break
 			fi
 			if $filltimeline; then # add the hour to the timeline
@@ -42,7 +42,7 @@ while read curuser; do
 				timeline+=" $slothour"
 			fi
 			# print bar according to how long the player was online during this slot
-			if `echo "$line" | grep -q " $curuser"`; then
+			if [[ "$line" == *\ $curuser* ]]; then
 				seconds="`echo "$line" | grep -o " $curuser [0-9]*" | cut -d' ' -f3`"
 				ontime="$(( $seconds / 60 ))"
 				barxxxxxxxx='\xE2\x96\x88' # full

@@ -51,7 +51,7 @@ fi
 leave() { # {{{ player left, process the timespan he was online at
 	jointime="${jointimes["$name"]}"
 	if [ -z "$jointime" ]; then # {{{ player left without joining
-		if `[ -z "$freshstart" ] || echo "$freshstart" | grep -q "$name"`; then # the player did not join and the server was just started
+		if [[ -z "$freshstart" || "$freshstart" == *$name* ]]; then # the player did not join and the server was just started
 			echo -e "${cr}ERROR${cn} `date -d @$seconds '+%a %d.%m.%Y %H:%M'` \"$name\" left without joining"
 		else # assume the server was started yesterday
 			jointime="`date -d "$date 00:00:00" +%s`" # the time this logfile started, in seconds since epoch
@@ -84,7 +84,7 @@ leave() { # {{{ player left, process the timespan he was online at
 			[ "$slotplaystart" -lt "$jointime" ] && slotplaystart="$jointime"
 			[ "$slotplayend" -gt "$seconds" ] && slotplayend="$seconds"
 			slotplaytime=$(( $slotplayend - $slotplaystart )) # the time the player played during this slot
-			if `echo "${slots["$slot"]}" | grep -q "$name"`; then
+			if [[ "${slots["$slot"]}" == *$name* ]]; then
 				# player was already online during this slot, add times together
 				if $istty; then
 					addtime="`echo "${slots["$slot"]}" | grep -o " $name ([0-9]*" | cut -d'(' -f2`"
@@ -123,7 +123,7 @@ while read line; do
 	name="`echo $line | cut -b34- | grep -o '^[^ ]*'`" # player name
 	case $action in # {{{
 		joined)
-			if echo "$online" | grep -qv "$name"; then # player is not already online
+			if [[ "$online" != *$name* ]]; then # player is not already online
 				jointimes["$name"]="$seconds"
 				online="$name $online"
 			fi
