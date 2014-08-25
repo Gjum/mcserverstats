@@ -16,6 +16,12 @@ Usage
 
 `$ ./histogram ../path/to/logfile.log.gz.scanned /path/to/list/of/users`
 
+`$ ./histogram-day yyyy-mm-dd /path/to/list/of/users`
+
+`$ ./histogram-today yyyy-mm-dd`
+
+`$ ./online-today`
+
 Example output
 --------------
 
@@ -54,7 +60,7 @@ HHL 8119
 
 ---
 
-Histogram:
+Histogram and variants:
 (the bars of each user are colored)
 
 ```
