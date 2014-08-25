@@ -3,6 +3,12 @@
 suffix=.scanned
 logfilespath='../logs/'
 
+# {{{ Is output a tty?
+istty=false
+if test -t 1; then
+	istty=true
+fi # }}}
+
 # {{{ coloring
 if $istty; then
 	cr="\e[1;49;31m" # red
@@ -17,5 +23,13 @@ convertsecs() { # {{{ convert seconds into hours:minutes:seconds
 	m=`expr $1 % 3600 / 60`
 	s=`expr $1 % 60`
 	printf "%02d:%02d:%02d\n" $h $m $s
+} # }}}
+
+getlogfilesoftoday() { # {{{ $1=date $2=suffix
+	if [ "$1" == `date +%Y-%m-%d` ]; then
+		echo "$logfilespath/$1*$2 $logfilespath/latest$2"
+	else
+		echo "$logfilespath/$1*$2"
+	fi
 } # }}}
 
