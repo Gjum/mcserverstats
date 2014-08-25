@@ -1,6 +1,7 @@
 #/bin/bash
 
 date="$1";
+whitelist="$2";
 rm ../logs/"$date".log #remove old .log file (or else new content will be added to create an infinite logfile)
 
 #concatenate logs for a whole day into a new .log file
@@ -12,4 +13,4 @@ done
 ./scan-one ../logs/"$date".log > ../logs/"$date".scanned
 
 #output histogram
-./histogram ../logs/"$date".scanned /var/www/html/minecraft/whitelist.txt
+./histogram ../logs/"$date".scanned $whitelist
