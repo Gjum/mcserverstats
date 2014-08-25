@@ -1,16 +1,23 @@
-#/bin/bash
+#!/bin/bash
+# Concatenates all logfiles of a day and draws a histogram of that day.
 
-date="$1";
-whitelist="$2";
-rm ../logs/"$date".log #remove old .log file (or else new content will be added to create an infinite logfile)
+date="$1"
+whitelist="$2"
 
-#concatenate logs for a whole day into a new .log file
-for file in ../logs/"$date"*.gz; do
-	gzip -dc $file >> ../logs/"$date".log
+source utils
+
+# concatenate logs for a whole day into a new .log file
+for file in $logfilespath/"$date"*.log.gz; do
+	gzip -dc $file >> $logfilespath/"$date".log
 done
 
-#create ".scanned" file of the whole day
-./scan-one ../logs/"$date".log > ../logs/"$date".scanned
+# create ".scanned" file of the whole day
+./scan-one $logfilespath/"$date".log > $logfilespath/"$date"$suffix
 
-#output histogram
-./histogram ../logs/"$date".scanned $whitelist
+# output histogram
+./histogram $logfilespath/"$date"$suffix $whitelist
+
+rm $logfilespath/"$date".log $logfilespath/"$date"$suffix # cleanup (or else new content will be added to create an infinite log/scanfile)
+
+exit 0
+
