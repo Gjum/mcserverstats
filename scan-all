@@ -1,24 +1,31 @@
 #!/bin/bash
-# scans all unscanned logfiles, i.e. *.log.gz and latest.log
-
-# arguments
-slotsec=3600 # 3600 seconds/hour, 86400 seconds/day
-if [ -n "$1" ]; then slotsec="$1"; fi
+# Rescans all logfiles of today, i.e. *.log.gz and latest.log,
+# or all existing logfiles if the -f switch is provided (force rescan).
 
 source utils
 
-# scan all compressed logfiles
-for logfile in $logfilespath/*.log.gz; do
-	scanfile="`echo "$logfile" | sed "s/.log.gz$/$suffix/g"`"
-	if [ ! -f $scanfile ]; then
-		./scan-one "$logfile" "$slotsec" > "$logfilespath/$scanfile"
-	fi
+force=false # true to rescan all logfiles, false to rescan only today
+
+OPTIND=1
+while getopts "f" arg; do
+	case $arg in
+		f) force=true ;;
+	esac
 done
 
-# if present, scan latest.log
-if [ -f "$logfilespath/latest.log" ]; then
-	./scan-one "$logfilespath/latest.log" "$slotsec" > "$logfilespath/latest$suffix"
+if $force; then
+	dates=`for logfile in $logfilespath/*.log.gz; do
+		echo "$logfile" | grep -oE '[[:digit:]-]{10}'
+	done | uniq`
 fi
+
+dates+=" `date +%Y-%m-%d`"
+
+# scan the compressed logfiles
+for date in $dates; do
+	echo Scanning "$date"...
+	./scan-day "$date" > "$logfilespath/$date$suffix"
+done
 
 exit 0
 

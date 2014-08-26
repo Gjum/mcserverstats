@@ -11,29 +11,28 @@ today="$1" # year-month-day of the logfiles to read
 if [ -z "$today" ]; then
 	today="`date +%Y-%m-%d`"
 fi
-filelist="$logfilespath/$today*$suffix"
+scanfile="$logfilespath/$today$suffix"
 
-# {{{ look at all logfiles of today
-for scanfile in $filelist; do
-	readthisline=false # skip all lines before and including the onlinetimes marker
-	# for each player, add the online time
-	while read line; do
-		if $readthisline; then
-			if [[ "$line" == ===* ]]; then
-				break # all relevant lines scanned
-			fi
-			name="`echo "$line" | cut -d' ' -f1`"
-			seconds="`echo "$line" | cut -d' ' -f2`"
-			if [ -z "${onlinetoday["$name"]}" ]; then
-				onlinetoday["$name"]=$seconds
-			else
-				onlinetoday["$name"]=$(( $seconds + ${onlinetoday["$name"]} ))
-			fi
-		elif [[ "$line" == ===\ onlinetimes\ === ]]; then
-			readthisline=true
+# {{{ look at the logfile of today
+readthisline=false # skip all lines before and including the onlinetimes marker
+# for each player, add the online time
+while read line; do
+	if $readthisline; then
+		if [[ "$line" == ===* ]]; then
+			break # all relevant lines scanned
 		fi
-	done < "$scanfile"
-done # }}}
+		name="`echo "$line" | cut -d' ' -f1`"
+		seconds="`echo "$line" | cut -d' ' -f2`"
+		if [ -z "${onlinetoday["$name"]}" ]; then
+			onlinetoday["$name"]=$seconds
+		else
+			onlinetoday["$name"]=$(( $seconds + ${onlinetoday["$name"]} ))
+		fi
+	elif [[ "$line" == ===\ onlinetimes\ === ]]; then
+		readthisline=true
+	fi
+done < "$scanfile"
+# }}}
 
 # {{{ print results
 for name in "${!onlinetoday[@]}"; do
