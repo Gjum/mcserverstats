@@ -6,7 +6,7 @@ source utils # include utility functions
 
 # arguments
 today="$1" # year-month-day of the logfiles to read
-filelist="`getlogfilesoftoday "$today" '.log.gz'`"
+filelist="`getlogfilesoftoday "$today"`"
 
 # {{{ init
 declare -A jointimes # last time the player joined
@@ -15,6 +15,8 @@ declare -A onlinetimes # total time each player has been online during this log
 declare -A onlinespans # times at which each player joined/left
 
 online= # holds all online players
+
+shopt -s nullglob # Expand there-is-no-file-with-this*name to empty string
 # }}}
 
 leave() { # {{{ player left, process the timespan he was online at
@@ -78,7 +80,7 @@ leave() { # {{{ player left, process the timespan he was online at
 		else onlinetimes["$name"]=$(( $difftime + ${onlinetimes["$name"]} ))
 		fi
 	fi
-	online="`echo $online | sed "s/$name *//"`"
+	online="`echo "$online" | sed "s/$name *//"`"
 	jointimes["$name"]=$seconds # if not joining again, next leave will simulate a join at this leave (prevent errors when logging in from another location)
 } # }}}
 
@@ -92,10 +94,10 @@ for logfile in $filelist; do
 	fi
 	# read the lines with relevant info (joined/left/restart)
 	while read line; do
-		time="`echo $line | cut -b2-9`" # time the output was created, e.g. 01:23:45
+		time="`echo "$line" | cut -b2-9`" # time the output was created, e.g. 01:23:45
 		seconds=`date -d "$today $time" +%s` # convert to seconds since epoch
-		action="`echo $line | grep -o '\(joined\|left\)'`"
-		name="`echo $line | cut -b34- | grep -o '^[^ ]*'`" # player name
+		action="`echo "$line" | grep -o '\(joined\|left\)'`"
+		name="`echo "$line" | cut -b34- | grep -o '^[^ ]*'`" # player name
 		case $action in # {{{
 			joined)
 				if [[ "$online" != *$name* ]]; then # player is not already online

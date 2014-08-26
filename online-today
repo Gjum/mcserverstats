@@ -8,7 +8,7 @@ declare -A onlinetoday # seconds each player was online today
 
 # arguments
 today="$1" # year-month-day of the logfiles to read
-filelist="`getlogfilesoftoday "$today" "$suffix"`"
+filelist="`getscanfilesoftoday "$today"`"
 
 # {{{ look at all logfiles of today
 for scanfile in $filelist; do

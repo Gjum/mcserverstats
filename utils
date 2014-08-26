@@ -31,11 +31,19 @@ convertsecs() { # {{{ convert seconds into hours:minutes:seconds
 	printf "%02d:%02d:%02d\n" $h $m $s
 } # }}}
 
-getlogfilesoftoday() { # {{{ $1=date $2=suffix
+getlogfilesoftoday() { # {{{ $1=date
 	if [ "$1" == `date +%Y-%m-%d` ]; then
-		echo "$logfilespath/$1*$2 $logfilespath/latest$2"
+		echo "$logfilespath/$1*.log.gz $logfilespath/latest.log"
 	else
-		echo "$logfilespath/$1*$2"
+		echo "$logfilespath/$1*.log.gz"
+	fi
+} # }}}
+
+getscanfilesoftoday() { # {{{ $1=date
+	if [ "$1" == `date +%Y-%m-%d` ]; then
+		echo "$logfilespath/$1*$suffix $logfilespath/latest$suffix"
+	else
+		echo "$logfilespath/$1*$suffix"
 	fi
 } # }}}
 
