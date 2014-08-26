@@ -2,18 +2,10 @@
 # Scans one logfile and outputs various play time statistics.
 # Copyright (c) 2014 Gjum. All rights reserved.
 
+source utils # include utility functions
+
 # arguments
 logfile="$1"
-slotsec=3600 # 3600 seconds/hour, 86400 seconds/day
-if [ -n "$2" ]; then slotsec="$2"; fi
-
-# {{{ Is output a tty?
-istty=false
-if test -t 1; then
-	istty=true
-fi # }}}
-
-source utils # include utility functions
 
 # {{{ init
 declare -A jointimes # last time the player joined
@@ -43,8 +35,7 @@ leave() { # {{{ player left, process the timespan he was online at
 			jointime="`date -d "$date 00:00:00" +%s`" # the time this logfile started, in seconds since epoch
 			freshstart="$freshstart $name"
 		fi
-	fi
-	# }}}
+	fi # }}}
 	if [ -n "$jointime" ]; then # leave if no error
 		# add entry to onlinespans
 		if [ -z "${onlinespans["$name"]}" ]; then # onlinespan of this player is empty, fill with name
@@ -97,16 +88,16 @@ leave() { # {{{ player left, process the timespan he was online at
 		else onlinetimes["$name"]=$(( $difftime + ${onlinetimes["$name"]} ))
 		fi
 	fi
-	online="`echo $online | sed "s/$name *//"`"
+	online="`echo "$online" | sed "s/$name *//"`"
 	jointimes["$name"]=$seconds # if not joining again, next leave will simulate a join at this leave (prevent errors when logging in from another location)
 } # }}}
 
 # {{{ read the lines with relevant info (joined/left/restart)
 while read line; do
-	time="`echo $line | cut -b2-9`" # time the output was created, e.g. 01:23:45
+	time="`echo "$line" | cut -b2-9`" # time the output was created, e.g. 01:23:45
 	seconds=`date -d "$date $time" +%s` # convert to seconds since epoch
-	action="`echo $line | grep -o '\(joined\|left\)'`"
-	name="`echo $line | cut -b34- | grep -o '^[^ ]*'`" # player name
+	action="`echo "$line" | grep -o '\(joined\|left\)'`"
+	name="`echo "$line" | cut -b34- | grep -o '^[^ ]*'`" # player name
 	case $action in # {{{
 		joined)
 			if [[ "$online" != *$name* ]]; then # player is not already online
