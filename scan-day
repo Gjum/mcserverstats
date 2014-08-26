@@ -8,9 +8,6 @@ source utils # include utility functions
 today="$1" # year-month-day of the logfiles to read
 filelist="`getlogfilesoftoday "$today" '.log.gz'`"
 
-slotsec=3600 # 3600 seconds/hour, 86400 seconds/day
-if [ -n "$2" ]; then slotsec="$2"; fi
-
 # {{{ init
 declare -A jointimes # last time the player joined
 declare -A slots # time and names of players online at that timeframe

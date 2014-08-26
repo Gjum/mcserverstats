@@ -1,7 +1,11 @@
 #!/bin/bash
 
+# configuration
 suffix=.scanned
 logfilespath='../logs/'
+slotsec=3600 # 3600 seconds/hour, 86400 seconds/day
+
+# useful constants
 
 # {{{ Is output a tty?
 istty=false
@@ -17,6 +21,8 @@ if $istty; then
 	cb="\e[1;49;34m" # blue
 	cn="\e[0;0;0m"   # normal/reset
 fi #}}}
+
+# useful functions
 
 convertsecs() { # {{{ convert seconds into hours:minutes:seconds
 	h=`expr $1 / 3600`

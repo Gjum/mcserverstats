@@ -1,5 +1,5 @@
 #!/bin/bash
-# creates a list of times every player in the whitelist has played
+# Creates a list of times every player in the whitelist has played at one day.
 
 source utils # include utility functions
 
@@ -9,9 +9,6 @@ declare -A onlinetoday # seconds each player was online today
 # arguments
 today="$1" # year-month-day of the logfiles to read
 filelist="`getlogfilesoftoday "$today" "$suffix"`"
-
-slotsec=3600 # 3600 seconds/hour, 86400 seconds/day
-if [ -n "$2" ]; then slotsec="$2"; fi
 
 # {{{ look at all logfiles of today
 for scanfile in $filelist; do
@@ -29,8 +26,7 @@ for scanfile in $filelist; do
 			else
 				onlinetoday["$name"]=$(( $seconds + ${onlinetoday["$name"]} ))
 			fi
-		fi
-		if [[ "$line" == ===\ onlinetimes\ === ]]; then
+		elif [[ "$line" == ===\ onlinetimes\ === ]]; then
 			readthisline=true
 		fi
 	done < "$scanfile"
