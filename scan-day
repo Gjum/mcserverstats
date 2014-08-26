@@ -5,8 +5,8 @@
 source utils # include utility functions
 
 # arguments
-today="$1" # year-month-day of the logfiles to read
-filelist="`getlogfilesoftoday "$today"`"
+date="$1" # year-month-day of the logfiles to read
+filelist="`getlogfilesoftoday "$date"`"
 
 # {{{ init
 declare -A jointimes # last time the player joined
@@ -16,7 +16,6 @@ declare -A onlinespans # times at which each player joined/left
 
 online= # holds all online players
 
-shopt -s nullglob # Expand there-is-no-file-with-this*name to empty string
 # }}}
 
 leave() { # {{{ player left, process the timespan he was online at
@@ -25,7 +24,7 @@ leave() { # {{{ player left, process the timespan he was online at
 		if [[ -z "$freshstart" || "$freshstart" == *$name* ]]; then # the player did not join and the server was just started
 			echo -e "${cr}ERROR${cn} `date -d @$seconds '+%a %d.%m.%Y %H:%M'` \"$name\" left without joining"
 		else # assume the server was started yesterday
-			jointime="`date -d "$today 00:00:00" +%s`" # the time this logfile started, in seconds since epoch
+			jointime="`date -d "$date 00:00:00" +%s`" # the time this logfile started, in seconds since epoch
 			freshstart="$freshstart $name"
 		fi
 	fi # }}}
@@ -71,7 +70,8 @@ leave() { # {{{ player left, process the timespan he was online at
 				else
 					slots["$slot"]="${slots["$slot"]} $name $slotplaytime"
 				fi
-			fi # }}}
+			fi
+			# }}}
 		done
 		# increase player's playtime
 		difftime="$(( $seconds - $jointime ))"
@@ -84,7 +84,8 @@ leave() { # {{{ player left, process the timespan he was online at
 	jointimes["$name"]=$seconds # if not joining again, next leave will simulate a join at this leave (prevent errors when logging in from another location)
 } # }}}
 
-# {{{ scan all logfiles of today
+# {{{ scan all logfiles of the day
+shopt -s nullglob # Expand there-is-no-file-with-this*name to empty string
 for logfile in $filelist; do
 	readcmd='gzip -dc'
 	if [[ "$logfile" != *.gz ]]; then readcmd='cat'; fi # use cat (slower than <) since we do not use this mode very often
@@ -92,10 +93,10 @@ for logfile in $filelist; do
 	if `$readcmd $logfile | head -n 1 | grep -q 'Starting'`; then
 		freshstart=
 	fi
-	# read the lines with relevant info (joined/left/restart)
+	# {{{ read the lines with relevant info (joined/left/restart)
 	while read line; do
 		time="`echo "$line" | cut -b2-9`" # time the output was created, e.g. 01:23:45
-		seconds=`date -d "$today $time" +%s` # convert to seconds since epoch
+		seconds=`date -d "$date $time" +%s` # convert to seconds since epoch
 		action="`echo "$line" | grep -o '\(joined\|left\)'`"
 		name="`echo "$line" | cut -b34- | grep -o '^[^ ]*'`" # player name
 		case $action in # {{{
@@ -111,14 +112,17 @@ for logfile in $filelist; do
 				;;
 		esac # }}}
 	done < <($readcmd $logfile | grep -v '<' | grep ' the game$' | grep 'Server thread/INFO' | sed "s/`printf '\247'`.//g")
+	# }}}
 	# {{{ all players leave
 	# TODO 24:00 when server was not stopped
 	time="`$readcmd $logfile | cut -b2-9 | grep -Eo '[0-9:]*' | tail -n 1`"
-	seconds=`date -d "$today $time" +%s` # convert to seconds since epoch
+	seconds=`date -d "$date $time" +%s` # convert to seconds since epoch
 	for name in `echo "$online" | grep -o '[^ ].*[^ ]'`; do # overwrite the empty name field
 		leave
-	done # }}}
-done # }}}
+	done
+	# }}}
+done
+# }}}
 
 # {{{ print results
 if $istty; then
@@ -152,7 +156,8 @@ else
 		seconds="${onlinetimes["$name"]}"
 		echo "$name $seconds"
 	done
-fi # }}}
+fi
+# }}}
 
 exit 0
 
