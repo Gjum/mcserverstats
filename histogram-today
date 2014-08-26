@@ -1,91 +1,10 @@
 #!/bin/bash
-# reads all scanfiles of a given day and plots it as a histogram using unicode
-# by HarHarLinks
+# Reads the scanfile of a given day and plots it as a histogram using unicode.
 
-source utils # include utility functions
-
-# arguments
-today="`date +%Y-%m-%d`" # year-month-day of the logfiles to read
-if [ -n "$1" ]; then
-	today="$1"
+today="$1" # year-month-day of the logfiles to read
+if [ -z "$today" ]; then
+	today="`date +%Y-%m-%d`"
 fi
-if [ "$today" == `date +%Y-%m-%d` ]; then
-	filelist="$logfilespath/$today*$suffix $logfilespath/latest$suffix"
-else
-	filelist="$logfilespath/$today*$suffix"
-fi
+scanfile="$logfilespath/$today$suffix"
 
-whitelist="$2"
-
-filltimeline=true # true for the first player
-
-# print histogram line for each user
-while read curuser; do
-	if [ -n "$curuser" ]; then # catch empty lines
-		curline="`printf '%16s' $curuser` |"
-		case "$curuser" in
-			"Offlinegott" | "Moqtah_Laila")
-				curline+="$cg"
-				;;
-			"gjum")
-				curline+="$cb"
-				;;
-			"HHL")
-				curline+="$cy"
-				;;
-		esac
-		# read all scanfiles of that day
-		for scanfile in $filelist; do
-			# read the scanfile
-			while read line; do
-				if [[ "$line" == ===* ]]; then # end of relevant lines
-					break
-				fi
-				if [ -z "$line" ]; then continue; fi
-				if $filltimeline; then # add the hour to the timeline
-					linetime="`echo "$line" | grep -o "^[^ ]*"`"
-					slothour="`date -d "@$linetime" +%H`"
-					timeline+=" $slothour"
-				fi
-				# print bar according to how long the player was online during this slot
-				if [[ "$line" == *\ $curuser* ]]; then
-					seconds="`echo "$line" | grep -o " $curuser [0-9]*" | cut -d' ' -f3`"
-					ontime="$(( $seconds / 60 ))"
-					barxxxxxxxx='\xE2\x96\x88' # full
-					barxxxxxxxo='\xE2\x96\x87' # seveneights
-					barxxxxxxoo='\xE2\x96\x86' # threequaters
-					barxxxxxooo='\xE2\x96\x85' # fiveeights
-					barxxxxoooo='\xE2\x96\x84' # half
-					barxxxooooo='\xE2\x96\x83' # threeeights
-					barxxoooooo='\xE2\x96\x82' # quarter
-					barxooooooo='\xE2\x96\x82' # eigth
-					if [ $ontime -gt 56 ]; then
-						curline+=" $barxxxxxxxx$barxxxxxxxx"
-					elif [ $ontime -gt 49 ]; then
-						curline+=" $barxxxxxxxo$barxxxxxxxo"
-					elif [ $ontime -gt 42 ]; then
-						curline+=" $barxxxxxxoo$barxxxxxxoo"
-					elif [ $ontime -gt 35 ]; then
-						curline+=" $barxxxxxooo$barxxxxxooo"
-					elif [ $ontime -gt 28 ]; then
-						curline+=" $barxxxxoooo$barxxxxoooo"
-					elif [ $ontime -gt 21 ]; then
-						curline+=" $barxxxooooo$barxxxooooo"
-					elif [ $ontime -gt 14 ]; then
-						curline+=" $barxxoooooo$barxxoooooo"
-					elif [ $ontime -gt 7 ]; then
-						curline+=" $barxooooooo$barxooooooo"
-					else
-						curline+=' __'
-					fi
-				else curline+='   '
-				fi
-			done < "$scanfile"
-		done
-		echo -e "$curline$cn"
-		filltimeline=false
-	fi
-done < "$whitelist"
-echo "            time |$timeline"
-
-exit 0
+./histogram "$scanfile" "$2"
