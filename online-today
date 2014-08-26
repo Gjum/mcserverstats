@@ -8,7 +8,10 @@ declare -A onlinetoday # seconds each player was online today
 
 # arguments
 today="$1" # year-month-day of the logfiles to read
-filelist="`getscanfilesoftoday "$today"`"
+if [ -z "$today" ]; then
+	today="`date +%Y-%m-%d`"
+fi
+filelist="$logfilespath/$today*$suffix"
 
 # {{{ look at all logfiles of today
 for scanfile in $filelist; do
@@ -34,8 +37,9 @@ done # }}}
 
 # {{{ print results
 for name in "${!onlinetoday[@]}"; do
-	printf '%-16s %s\n' "$name" "`convertsecs "${onlinetoday["$name"]}"`"
-done
+	seconds="${onlinetoday["$name"]}"
+	printf '%10d %-16s %s\n' "$seconds" "$name" "`convertsecs "$seconds"`"
+done | sort -nr | cut -b12- # sort descending, natural numbers ordering
 # }}}
 
 exit 0

@@ -39,11 +39,3 @@ getlogfilesoftoday() { # {{{ $1=date
 	fi
 } # }}}
 
-getscanfilesoftoday() { # {{{ $1=date
-	if [ "$1" == `date +%Y-%m-%d` ]; then
-		echo "$logfilespath/$1*$suffix $logfilespath/latest$suffix"
-	else
-		echo "$logfilespath/$1*$suffix"
-	fi
-} # }}}
-
