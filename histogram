@@ -46,7 +46,7 @@ while read curuser; do
 				barxxxxoooo='\xE2\x96\x84' # half
 				barxxxooooo='\xE2\x96\x83' # threeeights
 				barxxoooooo='\xE2\x96\x82' # quarter
-				barxooooooo='\xE2\x96\x82' # eigth
+				barxooooooo='\xE2\x96\x81' # eigth
 				if [ $ontime -gt 56 ]; then
 					curline+=" $barxxxxxxxx$barxxxxxxxx"
 				elif [ $ontime -gt 49 ]; then
