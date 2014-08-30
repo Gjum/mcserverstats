@@ -12,15 +12,15 @@ Installation
 Usage
 -----
 
-`$ ./scan-all`
+`$ ./scan-all` to scan all available logs to dayly scanfiles or `$ ./scan-all -f` to force rescan of all files
 
 `$ ./histogram ../path/to/logfile.log.gz.scanned /path/to/list/of/users`
 
-`$ ./histogram-day yyyy-mm-dd /path/to/list/of/users`
+`$ ./histogram-day yyyy-mm-dd`
 
-`$ ./histogram-today yyyy-mm-dd`
+`$ ./online-today` (for today) or `$ ./online-today YYYY-MM-DD`
 
-`$ ./online-today`
+`$ ./online-total`
 
 Example output
 --------------
@@ -71,4 +71,3 @@ Histogram and variants:
             time | 19 20 21 22 23
 
 ```
-
