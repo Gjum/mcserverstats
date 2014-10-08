@@ -39,7 +39,7 @@ leave() { # {{{ player left, process the timespan he was online at
 			slottime=$(( $slot * $slotsec ))
 			if [ -z "${slots["$slot"]}" ]; then # {{{ slot is empty, fill it with its date/time
 				# human readable (tty) format: 1407874849 Sun 12.03.2014 12:34 gjum (42min) notch (23min)
-				# machine readable (non-tty) format: 1407874849 Sun 12.03.2014 12:34 gjum (42min) notch (23min)
+				# machine readable (non-tty) format: 1407874849 gjum:2520 notch:1380
 				if $istty; then
 					humanreadabledate="`date -d @$slottime '+%a %d.%m.%Y %H:%M'`" # date format: Sun 12.03.2014 12:34
 					slots["$slot"]="$slottime ${cg}$humanreadabledate${cn}"
@@ -60,15 +60,15 @@ leave() { # {{{ player left, process the timespan he was online at
 					slotwithoutold="`echo "${slots["$slot"]}" | sed "s/ $name ([0-9]*min)//"`"
 					slots["$slot"]="$slotwithoutold $name ($(( $slotplaytime / 60 + $addtime ))min)"
 				else
-					addtime="`echo "${slots["$slot"]}" | grep -o " $name [0-9]*" | cut -d' ' -f3`"
-					slotwithoutold="`echo "${slots["$slot"]}" | sed "s/ $name [0-9]*//"`"
-					slots["$slot"]="$slotwithoutold $name $(( $slotplaytime + $addtime ))"
+					addtime="`echo "${slots["$slot"]}" | grep -o " $name:[0-9]*" | cut -d':' -f2`"
+					slotwithoutold="`echo "${slots["$slot"]}" | sed "s/ $name:[0-9]*//"`"
+					slots["$slot"]="$slotwithoutold $name:$(( $slotplaytime + $addtime ))"
 				fi
 			else # add player's entry at the end of the line
 				if $istty; then
 					slots["$slot"]="${slots["$slot"]} $name ($((($slotplaytime + 59) / 60))min)"
 				else
-					slots["$slot"]="${slots["$slot"]} $name $slotplaytime"
+					slots["$slot"]="${slots["$slot"]} $name:$slotplaytime"
 				fi
 			fi
 			# }}}
@@ -111,7 +111,7 @@ for logfile in $filelist; do
 			*) echo -e "${cr}ERROR${cn} Invalid action \"$action\". \"$line\""
 				;;
 		esac # }}}
-	done < <($readcmd $logfile | grep -v '<' | grep ' the game$' | grep 'Server thread/INFO' | sed "s/`printf '\247'`.//g")
+	done < <($readcmd $logfile | grep -v '<' | grep ' the game$' | sed "s/`printf '\247'`.//g")
 	# }}}
 	# {{{ all players leave
 	# TODO 24:00 when server was not stopped
@@ -137,9 +137,8 @@ if $istty; then
 	for name in "${!onlinetimes[@]}"; do
 		seconds="${onlinetimes["$name"]}"
 		converted="`convertsecs $seconds`"
-		out="$out`printf '\n%5d seconds or %s' "$seconds" "$converted"` ${cy}$name${cn}"
-	done
-	echo -e "`echo "$out" | sort -nr`" # sort descending, natural numbers ordering
+		printf '%5d seconds or %s %s\n' "$seconds" "$converted" "${cy}$name${cn}"
+	done | sort -nr # sort descending, natural numbers ordering
 else
 	# print time slot occupations
 	echo -e "`printf '%s\n' "${slots[@]}" | sort`"

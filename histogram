@@ -24,17 +24,26 @@ while read curuser; do
 				curline+="$cy"
 				;;
 		esac
+		lasttime= # will hold the last slot that was displayed
 		# read the scanfile
 		while read line; do
-			if [[ "$line" == ===* ]]; then # end of relevant lines
+			if [[ "$line" == ===* ]]; then # end of slots reached
 				break
 			fi
-			if [ -z "$line" ]; then continue; fi
+			if [ -z "$line" ]; then
+				continue
+			fi
+			linetime="`echo "$line" | grep -o "^[^ ]*"`"
+			if [ -n "$lasttime" ]; then
+				lasttime="$linetime"
+			fi
 			if $filltimeline; then # add the hour to the timeline
-				linetime="`echo "$line" | grep -o "^[^ ]*"`"
 				slothour="`date -d "@$linetime" +%H`"
 				timeline+=" $slothour"
 			fi
+			for time in {}; do # fill up empty slots
+				curline+='   '
+			done
 			# print bar according to how long the player was online during this slot
 			if [[ "$line" == *\ $curuser* ]]; then
 				seconds="`echo "$line" | grep -o " $curuser [0-9]*" | cut -d' ' -f3`"
