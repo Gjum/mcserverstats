@@ -126,8 +126,7 @@ class LogProcessor:
         if before is None: before = after + 3600*24
         # unicode bars: '_' < 1/8, '\xe2\x96\x81' = 1/8, '\xe2\x96\x88' = 8/8
         # TODO directly use unicode: \u2581, \u2582, ...
-        bars = ['_'] + ['\xe2\x96' + chr(0x80 + i) for i in range(1, 9)]
-        bars = [b.decode('UTF-8') for b in bars]
+        bars = ['_'] + [b'\xe2\x96' + chr(0x80 + i) for i in range(1, 9)]
         numBars = len(bars)
         lines = {}
         skippedSpace = ''
