@@ -8,7 +8,7 @@ from glob import glob
 Wanted functionality:
     - DONE time played today per player
     - DONE total time played per player
-    - DONE histogram of all players
+    - DONE punchcard of all players
 TODO respect PEP
 TODO convert exceptions into assumptions and stdErr message
 an interesting line: (? = 0xa7, color code escape char)
@@ -148,43 +148,33 @@ class LogProcessor:
         for player, playedTime in sorted(total.items(), key=lambda x: x[1], reverse=True):
             print('%-16s %6i sec' % (player+':', playedTime))
 
-    def drawHistogram(self, after = None, before = None, slotSize = 3600):
+    # TODO should go into own script file
+    def getPunchcard(self, imagePath, after = None, before = None, slotSize = 3600, slotTimeFormatString = '%H'):
+        from Punchcard import punchcard
         # if not provided, show last day
         if after is None:
             after, _ = getDateFromFile(max(self.processedFiles))
         # if not provided, show one day
         if before is None:
             before = after + 3600*24
-        print('after, before', after, before)
-        # unicode bars: '_' < 1/8, '\xe2\x96\x81' = 1/8, '\xe2\x96\x88' = 8/8
-        # TODO directly use unicode: \u2581, \u2582, ...
-        bars = ['_'] + [b'\xe2\x96' + chr(0x80 + i) for i in range(1, 9)]
-        numBars = len(bars)
-        lines = {}
-        skippedSpace = ''
+        playerSlots = {}
+        skippedSlots = []
         slotStartTime, slots = self.getSlots(slotSize)
-        #slots = slots[(after-slotStartTime) // slotSize:(before-slotStartTime) // slotSize]
-        timeline = '%-16s' % datetime.datetime.fromtimestamp(slotStartTime).strftime('%Y-%m-%d')
+        slotTimes = []
         for i, slot in enumerate(slots):
             if slotStartTime + i*slotSize < after:
                 continue
             if slotStartTime + i*slotSize >= before:
                 continue
             for player in slot.keys():
-                if player not in lines:
-                    lines[player] = skippedSpace # new player found
-            for player in lines.keys():
-                onlineTimeInSlot = slot[player] if player in slot else 0
-                lines[player] += ' ' + 2*bars[onlineTimeInSlot * numBars // (slotSize+1)] if onlineTimeInSlot > 0 else '   '
-            skippedSpace += '   '
-            # timeline
+                if player not in playerSlots:
+                    playerSlots[player] = list(skippedSlots) # new player found
+            for player in playerSlots.keys():
+                playerSlots[player].append(slot[player] if player in slot else 0)
+            skippedSlots.append(0)
             slotTime = i * slotSize + slotStartTime
-            timeline += datetime.datetime.fromtimestamp(slotTime).strftime(' %H')
-        print(timeline)
-        for player, line in lines.items():
-            print('')
-            print('%-16s%s' % (player, line))
-
+            slotTimes.append(datetime.datetime.fromtimestamp(slotTime).strftime(slotTimeFormatString))
+        punchcard.punchcard(imagePath, playerSlots.values(), playerSlots.keys(), slotTimes)
 
 # TODO should go into own script file
 def printOnlineTimesLastHour(logPath = '../logs/'):
@@ -214,11 +204,11 @@ if __name__ == '__main__':
     print('times played last hour per player:')
     printOnlineTimesLastHour()
     print('')
-    print('histogram, last day:')
-    processor.drawHistogram()
+    print('punchcard, last day: see punchcard_lastDay.png')
+    processor.getPunchcard('punchcard_lastDay.png')
     print('')
-    print('histogram, complete:')
-    processor.drawHistogram(processor.firstEvent, processor.lastEvent)
+    print('punchcard, complete: see punchcard_complete.png')
+    processor.getPunchcard('punchcard_complete.png', processor.firstEvent, processor.lastEvent)
     print('')
-    print('histogram, custom interval:')
-    processor.drawHistogram(lastDay + 13*3600, lastDay + 22*3600)
+    print('punchcard, custom interval: see punchcard_customInterval.png')
+    processor.getPunchcard('punchcard_customInterval.png', lastDay + 13*3600, lastDay + 22*3600)
