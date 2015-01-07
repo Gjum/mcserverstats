@@ -149,7 +149,7 @@ class LogProcessor:
             print('%-16s %6i sec' % (player+':', playedTime))
 
     # TODO should go into own script file
-    def getPunchcard(self, imagePath, after = None, before = None, slotSize = 3600, slotTimeFormatString = '%H'):
+    def getPunchcard(self, imagePath, after = None, before = None, slotSize = 3600, title = None, slotTimeFormatString = '%H'):
         from Punchcard import punchcard
         # if not provided, show last day
         if after is None:
@@ -174,7 +174,9 @@ class LogProcessor:
             skippedSlots.append(0)
             slotTime = i * slotSize + slotStartTime
             slotTimes.append(datetime.datetime.fromtimestamp(slotTime).strftime(slotTimeFormatString))
-        punchcard.punchcard(imagePath, playerSlots.values(), playerSlots.keys(), slotTimes)
+        if title is None:
+            title = datetime.datetime.fromtimestamp(slotStartTime).strftime('%Y-%m-%d')
+        punchcard.punchcard(imagePath, playerSlots.values(), playerSlots.keys(), slotTimes, title=title)
 
 # TODO should go into own script file
 def printOnlineTimesLastHour(logPath = '../logs/'):
@@ -208,7 +210,7 @@ if __name__ == '__main__':
     processor.getPunchcard('punchcard_lastDay.png')
     print('')
     print('punchcard, complete: see punchcard_complete.png')
-    processor.getPunchcard('punchcard_complete.png', processor.firstEvent, processor.lastEvent)
+    processor.getPunchcard('punchcard_complete.png', processor.firstEvent, processor.lastEvent, title='Complete history')
     print('')
     print('punchcard, custom interval: see punchcard_customInterval.png')
     processor.getPunchcard('punchcard_customInterval.png', lastDay + 13*3600, lastDay + 22*3600)
