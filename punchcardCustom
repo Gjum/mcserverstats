@@ -1,0 +1,39 @@
+#!/usr/bin/env python2
+import sys
+import os
+import datetime
+from datetime import date
+from datetime import timedelta
+import time
+from glob import glob
+import LogProcessor
+
+def dateToRobot(day, daytime = '00:00:00'): #convert dates/times to robot format
+    dateString = day + ' ' + daytime
+    epoch = int(time.mktime(datetime.datetime.strptime(dateString, '%Y-%m-%d %H:%M:%S').timetuple()))
+    return epoch
+
+if len(sys.argv) < 3:
+    print('Usage %s <path/to/logs/> <YYYY-MM-DD[-HH]> <YYYY-MM-DD[-HH]>' % sys.argv[0])
+    sys.exit(0)
+logPath = sys.argv[1]
+fromDateString = sys.argv[2][:10]
+fromDate = date(int(fromDateString[:4]), int(fromDateString[5:7]), int(fromDateString[8:10]))
+fromHour = 0 if len(sys.argv[2]) <= 10 else int(sys.argv[2][-2:])
+toDateString = sys.argv[3][:10]
+toDate = date(int(toDateString[:4]), int(toDateString[5:7]), int(toDateString[8:10]))
+toHour = 0 if len(sys.argv[3]) <= 10 else int(sys.argv[3][-2:])
+
+processor = LogProcessor.LogProcessor()
+curDate = fromDate
+while curDate<=toDate:
+    for log in glob(logPath + '/' + curDate.isoformat() + '*.log.gz'): #every log for each date
+#        print('cur iso:', curDate.isoformat())
+        processor.processFile(log)
+    curDate = curDate + timedelta(1) #iterate
+processor.processFile(logPath+'/latest.log')
+
+#print dateToRobot(fromDate.isoformat())
+#print dateToRobot(toDate.isoformat())
+	
+processor.getPunchcard('punchcard_customInterval.png', dateToRobot(fromDate.isoformat()) + fromHour*3600, dateToRobot(toDate.isoformat()) + toHour*3600) #todo: name png by range?
