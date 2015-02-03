@@ -36,6 +36,4 @@ processor.processFile(logPath+'/latest.log')
 print dateToRobot(fromDate.isoformat(), `fromHour`+':00:00')
 print dateToRobot(toDate.isoformat(), `toHour`+':00:00')
 
-processor.setFirstEvent(fromDate.isoformat()+' '+`fromHour`+':00:00')
-processor.setLastEvent(toDate.isoformat()+' '+`toHour`+':00:00')
 processor.getPunchcard('punchcardCustomInterval.png', dateToRobot(fromDate.isoformat()) + fromHour*3600, dateToRobot(toDate.isoformat()) + toHour*3600) #todo: name png by range?

@@ -90,7 +90,7 @@ class LogProcessor:
                     if action == 'joined':
                         # TODO special cases should be handled here
                         if len(self.times[player]) > 0 and self.times[player][-1][1] == stillOnline:
-                            raise NotImplementedError('Double join') # TODO no error in special case #1
+                            raise NotImplementedError('Double join: %s at %s %s' % (player, filename, dateString)) # TODO no error in special case #1
                         self.times[player].append((actionTime, stillOnline))
                     elif action == 'left':
                         # TODO special cases should be handled here
@@ -103,14 +103,19 @@ class LogProcessor:
                                 # TODO check previous logs for when player joined
                     else:
                         raise ValueError('Invalid action: %s %s the game\n    in %s at %s' % (player, action, filename, dateString))
+                # line might be [02:23:32] [Server Shutdown Thread/INFO]: Stopping server, so everyone needs to get logged out
+                if line[-48:] == b' [Server Shutdown Thread/INFO]: Stopping server\n':
+                    # iterate over player array to seach for stillOnline
+                    for player in self.times:
+                        if self.times[player][-1][1] == stillOnline: # player is online
+                            self.times[player][-1] = (self.times[player][-1][0], actionTime) #emulate leave behaviour
+                        else: # player seems to not be online
+                            if freshRestart:
+                                raise ValueError('Player %s left without logging in after fresh server restart\n    in %s at %s' % (player, filename, dateString))
+                                # TODO check previous logs for when player joined
+                                # TODO replace by leave-method to reduce redundancy
             self.lastEvent = max(self.lastEvent, actionTime)
             self.processedFiles.append(filename)
-
-    def setFirstEvent(self, firstTime):
-        self.firstEvent = int(time.mktime(datetime.datetime.strptime(firstTime, '%Y-%m-%d %H:%M:%S').timetuple()))
-
-    def setLastEvent(self, lastTime):
-        self.lastEvent = int(time.mktime(datetime.datetime.strptime(lastTime, '%Y-%m-%d %H:%M:%S').timetuple()))
 
     def getSlots(self, slotSize = 3600):
         if self.firstEvent is None or self.lastEvent is None:
@@ -126,7 +131,7 @@ class LogProcessor:
                 for slotNum in range(joinTime // slotSize, leaveTime // slotSize + 1):
                     slotIndex = slotNum - startSlot # position in list
                     if slotIndex < 0:
-                        raise ValueError('Negative slot index, player %s at %i-%i' % (player, joinTime, leaveTime))
+                        raise ValueError('Negative slot index, player %s at %i-%i with slotNum %i but startSlot %i' % (player, joinTime, leaveTime, slotNum, startSlot))
                     if slotIndex >= numSlots:
                         raise ValueError('Slot index too large')
                     if player not in slots[slotIndex]:
