@@ -66,8 +66,11 @@ class LogProcessor:
             if not freshRestart:
                 logfile.seek(0) # first line might already contain joined/left information
             for line in logfile:
-                # actionTime: seconds since epoch when the event occurred, localtime
-                actionTime, dateString = getDateFromFile(filename, line[1:9].decode())
+                try: # ignore lines not containing a time
+                    # actionTime: seconds since epoch when the event occurred, localtime
+                    actionTime, dateString = getDateFromFile(filename, line[1:9].decode())
+                except:
+                    continue # skip line, has no date (usually Java error messages)
                 # '<' and '*': skip chat
                 if line[-10:] == b' the game\n' and line[33] != b'<' and line[33] != b'*' and line[12:33] == b'Server thread/INFO]: ':
                     # line contains joined/left information, extract it
@@ -103,8 +106,15 @@ class LogProcessor:
             self.lastEvent = max(self.lastEvent, actionTime)
             self.processedFiles.append(filename)
 
+    def setFirstEvent(self, firstTime):
+        self.firstEvent = int(time.mktime(datetime.datetime.strptime(firstTime, '%Y-%m-%d %H:%M:%S').timetuple()))
+
+    def setLastEvent(self, lastTime):
+        self.lastEvent = int(time.mktime(datetime.datetime.strptime(lastTime, '%Y-%m-%d %H:%M:%S').timetuple()))
+
     def getSlots(self, slotSize = 3600):
-        # if this throws an error, check if self.times is filled
+        if self.firstEvent is None or self.lastEvent is None:
+            return 0, []
         startSlot = self.firstEvent // slotSize
         endSlot = self.lastEvent // slotSize
         numSlots = endSlot - startSlot + 1
@@ -116,7 +126,7 @@ class LogProcessor:
                 for slotNum in range(joinTime // slotSize, leaveTime // slotSize + 1):
                     slotIndex = slotNum - startSlot # position in list
                     if slotIndex < 0:
-                        raise ValueError('Negative slot index')
+                        raise ValueError('Negative slot index, player %s at %i-%i' % (player, joinTime, leaveTime))
                     if slotIndex >= numSlots:
                         raise ValueError('Slot index too large')
                     if player not in slots[slotIndex]:

@@ -16,7 +16,7 @@ Usage
 
 `$ ./punchcardDay <path/to/logs/> [YYYY-MM-DD = today]`: draws punchcard of the day into ./punchcardDay.png
 
-`$ ./punchcardCustom <path/to/logs/> <YYYY-MM-DD[-HH]> <YYYY-MM-DD[-HH]>`: draws punchcard of the time range into ./punchcardCustomInterval.png (including start time, excluding end time, todo: do not crop)
+`$ ./punchcardCustom <path/to/logs/> <YYYY-MM-DD[-HH]> <YYYY-MM-DD[-HH]>`: draws punchcard of the time range into ./punchcardCustomInterval.png (including start time, excluding end time)
 
 ###Remaining to do:
 
