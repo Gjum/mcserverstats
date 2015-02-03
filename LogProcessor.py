@@ -107,13 +107,9 @@ class LogProcessor:
                 if line[-48:] == b' [Server Shutdown Thread/INFO]: Stopping server\n':
                     # iterate over player array to seach for stillOnline
                     for player in self.times:
-                        if self.times[player][-1][1] == stillOnline: # player is online
+                        if self.times[player][-1][1] == stillOnline: # player is online, is this necessary?
+                            print self.times[player][-1][1]
                             self.times[player][-1] = (self.times[player][-1][0], actionTime) #emulate leave behaviour
-                        else: # player seems to not be online
-                            if freshRestart:
-                                raise ValueError('Player %s left without logging in after fresh server restart\n    in %s at %s' % (player, filename, dateString))
-                                # TODO check previous logs for when player joined
-                                # TODO replace by leave-method to reduce redundancy
             self.lastEvent = max(self.lastEvent, actionTime)
             self.processedFiles.append(filename)
 
