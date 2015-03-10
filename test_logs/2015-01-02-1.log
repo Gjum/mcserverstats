@@ -1,0 +1,11 @@
+[04:00:00] [Server thread/INFO]: [Server] leave HHL
+[04:00:00] [Server thread/INFO]: HHL lost connection: TextComponent{text='Disconnected', siblings=[], style=Style{hasParent=false, color=null, bold=null, italic=null, underlined=null, obfuscated=null, clickEvent=null, hoverEvent=null, insertion=null}}
+[04:00:00] [Server thread/INFO]: §6HHL§r left the game
+[05:00:00] [Server thread/INFO]: [Server] rejoin Ulexos
+[05:00:00] [User Authenticator #8/INFO]: UUID of player Ulexos is a1d94087-e9c0-412f-b90f-cff2c224d44f
+[05:00:00] [Server thread/INFO]: Ulexos lost connection: TextComponent{text='You logged in from another location', siblings=[], style=Style{hasParent=false, color=null, bold=null, italic=null, underlined=null, obfuscated=null, clickEvent=null, hoverEvent=null, insertion=null}}
+[05:00:00] [Server thread/INFO]: §2Ulexos§r left the game
+[05:00:00] [Server thread/WARN]: handleDisconnection() called twice
+[05:00:00] [Server thread/INFO]: Ulexos[/95.91.242.240:54254] logged in with entity id 517154 at (-6382.5, 44.0, -957.5)
+[05:00:00] [Server thread/INFO]: §2Ulexos§r joined the game
+[06:00:00] [Server thread/INFO]: [Server] midnight-wrap, still on: Ulexos, Offlinegott
