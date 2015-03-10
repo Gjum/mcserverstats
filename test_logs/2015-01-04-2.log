@@ -32,8 +32,8 @@
 
 [14:00:00] [Server thread/INFO]: Stopping server
 [14:00:00] [Server thread/INFO]: Saving players
-[14:00:00] [Server thread/INFO]: HHL lost connection: TranslatableComponent{key='disconnect.genericReason', args=[Internal Exception: java.lang.StackOverflowError], siblings=[], style=Style{hasParent=false, color=null, bold=null, italic=null, underlined=null, obfuscated=null, clickEvent=null, hoverEvent=null, insertion=null}}
-[14:00:00] [Server thread/INFO]: §6HHL§r left the game
+[14:00:00] [Server thread/INFO]: Ulexos lost connection: TranslatableComponent{key='disconnect.genericReason', args=[Internal Exception: java.lang.StackOverflowError], siblings=[], style=Style{hasParent=false, color=null, bold=null, italic=null, underlined=null, obfuscated=null, clickEvent=null, hoverEvent=null, insertion=null}}
+[14:00:00] [Server thread/INFO]: §2Ulexos§r left the game
 [14:00:00] [Server thread/INFO]: Saving worlds
 [14:00:00] [Server thread/INFO]: Saving chunks for level 'world'/Overworld
 [14:00:00] [Server thread/INFO]: Saving chunks for level 'world'/Nether
