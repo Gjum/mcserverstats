@@ -8,28 +8,21 @@
 [10:09:39] [Server thread/INFO]: Preparing start region for level 0
 [10:09:41] [Server thread/INFO]: Preparing spawn area: 0%
 [10:09:44] [Server thread/INFO]: Done (5.188s)! For help, type "help" or "?"
-
 [10:09:45] [Server thread/INFO]: [Server] start
-
 [11:00:00] [Server thread/INFO]: [Server] join HHL
-
 [11:00:00] [User Authenticator #1/INFO]: UUID of player HHL is 808e727f-895a-4ac2-b246-4b6da2ca9451
 [11:00:00] [Server thread/INFO]: HHL[/89.0.209.151:59550] logged in with entity id 1544982 at (-6392.5013284891775, 33.875, -934.0381456504325)
 [11:00:00] [Server thread/INFO]: §6HHL§r joined the game
-
 [12:00:00] [Server thread/INFO]: [Server] join Ulexos
-
 [12:00:00] [User Authenticator #8/INFO]: UUID of player Ulexos is a1d94087-e9c0-412f-b90f-cff2c224d44f
 [12:00:00] [Server thread/INFO]: Ulexos[/95.91.242.240:54254] logged in with entity id 517154 at (-6382.5, 44.0, -957.5)
 [12:00:00] [Server thread/INFO]: §2Ulexos§r joined the game
-
 [13:00:00] [Server thread/INFO]: [Server] leave HHL
-
 [13:00:00] [Server thread/INFO]: §6HHL§r left the game
 [13:00:00] [Server thread/INFO]: HHL lost connection: TextComponent{text='Disconnected', siblings=[], style=Style{hasParent=false, color=null, bold=null, italic=null, underlined=null, obfuscated=null, clickEvent=null, hoverEvent=null, insertion=null}}
-
 [14:00:00] [Server thread/INFO]: [Server] stop, was still on: Ulexos
-
+[14:00:00] [Server thread/INFO]: [Server] Session HHL 11 - 13 7200s
+[14:00:00] [Server thread/INFO]: [Server] Session Ulexos 12 - 14 7200s
 [14:00:00] [Server thread/INFO]: Stopping server
 [14:00:00] [Server thread/INFO]: Saving players
 [14:00:00] [Server thread/INFO]: Ulexos lost connection: TranslatableComponent{key='disconnect.genericReason', args=[Internal Exception: java.lang.StackOverflowError], siblings=[], style=Style{hasParent=false, color=null, bold=null, italic=null, underlined=null, obfuscated=null, clickEvent=null, hoverEvent=null, insertion=null}}
