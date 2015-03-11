@@ -9,28 +9,25 @@ import yaml
 
 logging.basicConfig(format='[%(asctime)s] [%(levelname)s] %(funcName)s@%(lineno)s: %(message)s', datefmt='%H:%M:%S')
 logger = logging.getLogger('logalyzer')
-logger.setLevel(logging.DEBUG)
-
-RE_TIME = re.compile(b'^\[([\d:]{8})\] ')
-RE_START = re.compile(b'^\[([\d:]{8})\] \[Server thread/INFO\]: Starting minecraft server version ')
+logger.setLevel(logging.INFO)
 
 log_actions = []
 def log_action(regex_str):
     def inner(fun):
         regex_comp = re.compile(regex_str)
         log_actions.append((regex_comp, fun))
-
+        return fun
     return inner
 
-
 def date_str_to_epoch(day_str, time_str='00:00:00'):
-    logger.debug('day_str=%s, time_str=%s', day_str, time_str)
     epoch = int(time.mktime(datetime.datetime.strptime(day_str + ' ' + time_str, '%Y-%m-%d %H:%M:%S').timetuple()))
-    logger.debug('epoch=%s', epoch)
     return epoch
 
 
 class LogFile:
+    RE_TIME = re.compile('^\[([\d:]{8})\] ')
+    RE_START = re.compile('^\[([\d:]{8})\] \[Server thread/INFO\]: Starting minecraft server version ')
+
     def __init__(self, parent, log_name='latest'):
         self.parent = parent
         self.log_name = log_name
@@ -38,7 +35,7 @@ class LogFile:
         self.uuids = {}  # name -> last associated UUID
         self.been_read = False
 
-        self.yaml_attributes = ('started', 'stopped', 'first_event', 'last_event', 'online', 'times')
+        self.yaml_attributes = 'started', 'stopped', 'first_event', 'last_event', 'online', 'times'
         self.started = None
         self.stopped = None
         self.first_event = None
@@ -46,25 +43,26 @@ class LogFile:
         self.online = {}
         self.times = []
 
-        logger.debug('LogFile %s', self.log_name)
+        logger.info('LogFile %s', self.log_name)
 
     def read_log(self, prev_logs=()):
-        logger.debug('prev_logs: %s', prev_logs)
+        logger.info('prev_logs: %s', prev_logs)
         if self.been_read:
-            logger.warn('Already read', self.log_name)
+            logger.warn('Already read %s', self.log_name)
             return
-        if not self.peek_start():
-            if len(prev_logs) > 0:
-                prev_log = prev_logs[-1]
-                prev_log.read_log(prev_logs[:-1])
-                self.times = prev_log.online
-            else:
-                raise ValueError('First log and no server start')
         try:
             yaml_file = open(self.log_path + '.yaml', 'r')
         except FileNotFoundError:
             # no converted file exists, create it
+            if not self.peek_start():
+                if len(prev_logs) > 0:
+                    prev_log = prev_logs[-1]
+                    prev_log.read_log(prev_logs[:-1])
+                    self.online = prev_log.online
+                else:
+                    raise ValueError('First log and no server start')
             self.convert_log()
+            self.write_yaml()
         else:  # converted file exists, read it
             with yaml_file:
                 data = yaml.load(yaml_file)
@@ -73,6 +71,7 @@ class LogFile:
         self.been_read = True
         for attr in self.yaml_attributes:
             logger.debug('%s.%s = %s' % (self.log_name, attr, getattr(self, attr)))
+        logger.debug('Done reading %s ------------------------------', self.log_name)
 
     def convert_log(self):
         if self.log_name == 'latest':
@@ -81,10 +80,13 @@ class LogFile:
             log_file = gzip.open(self.log_path + '.gz', 'rb')
         with log_file:
             day_str = self.log_name.rsplit('-', 1)[0]
+            line_no = 0  # TODO TMP logging only
             for line in log_file:
-                time_match = RE_TIME.match(line)
+                line_no += 1
+                line = line.decode()
+                time_match = self.RE_TIME.match(line)
                 if time_match:  # only look at lines with a timestamp
-                    time_str = line[1:9].decode()
+                    time_str = line[1:9]
                     seconds = date_str_to_epoch(day_str, time_str)
                     if self.first_event is None:
                         self.first_event = seconds
@@ -95,37 +97,47 @@ class LogFile:
                         match = regex.match(line_after_time)
                         if match:
                             args = match.groups()
-                            logger.debug('%s@%i %s: %s' % (self.log_name, seconds, action.__name__, args))
+                            logger.debug('%s (%2i %i) %s: %s' % (self.log_name, line_no, seconds, action.__name__, args))
                             action(self, seconds, *args)
+        if self.stopped:
+            for name in list(self.online.keys())[:]:
+                self.found_leave(self.last_event, name, 'Server Stop')
+                logger.info('Stop leaving %s at %s' % (name, self.log_name))
 
-    @log_action(b'\[User Authenticator #(\d+)/INFO\]: UUID of player ([^ ]+) is ([-\da-f]{36})$')
+    @log_action('^\[User Authenticator #(\d+)/INFO\]: UUID of player ([^ ]+) is ([-\da-f]{36})$')
     def found_uuid(self, seconds, auth_nr, name, uuid):
         self.uuids[name] = uuid
 
-    @log_action(b'\[Server thread/INFO\]: ([^ \[]+)\[([/\d\.:]+)\] logged in with entity id (\d+) at \(([-\d\.]+), ([-\d\.]+), ([-\d\.]+)\)$')
+    @log_action('^\[Server thread/INFO\]: ([^ \[]+)\[([/\d\.:]+)\] logged in with entity id (\d+) at \(([-\d\.]+), ([-\d\.]+), ([-\d\.]+)\)$')
     def found_join(self, seconds, name, ip, e_id, x, y, z):
-        self.online[name] = [self.uuids[name], seconds]
+        if name in self.online:
+            logger.warn('double join %s, at %s %i', name, self.log_name, seconds)
+        else:
+            self.online[name] = [self.uuids[name], seconds]
 
-    @log_action(b'\[Server thread/INFO\]: ([^ ]+) lost connection: (.*)$')
+    @log_action('^\[Server thread/INFO\]: ([^ ]+) lost connection: (.*)$')
     def found_leave(self, seconds, name, reason):
+        if "text='You logged in from another location'" in reason:
+            logger.warn('double leave %s ignored, at %s %i', name, self.log_name, seconds)
+            return
         if name not in self.online:
             raise ValueError('Player %s left without joining at %s %i' % (name, self.log_name, seconds))
         uuid, from_sec = self.online[name]
         del self.online[name]
         self.times.append([uuid, from_sec, seconds, name])
 
-    @log_action(b'\[Server thread/INFO\]: Stopping server$')
+    @log_action('\[Server thread/INFO\]: Stopping server$')
     def found_stop(self, seconds):
+        if self.stopped:
+            logger.error('Stopped two times at %s %i', self.log_name, seconds)
         self.stopped = True
-        for name in self.online:
-            self.found_leave(seconds, name, 'Server Stop')
-            logger.debug('Stop leaving %s at %s %i' % (name, self.log_name, seconds))
 
     def write_yaml(self):
         if self.log_name == 'latest':
-            logger.warn('[write_yaml] not writing latest, aborting')
+            logger.warn('not writing latest, aborting')
             return
         with open(self.log_path + '.yaml', 'w') as yaml_file:
+            logger.warn('writing %s', self.log_path + '.yaml')
             data = {}
             for attr in self.yaml_attributes:
                 data[attr] = getattr(self, attr)
@@ -134,40 +146,27 @@ class LogFile:
     def peek_start(self):
         if self.started is not None:
             # already peeked
-            logger.debug('already peeked')
+            logger.warn('already peeked')
             return self.started
-        try:
-            yaml_file = open(self.log_path + '.yaml', 'r')
-        except FileNotFoundError:
-            # no converted file exists, peek log file
-            if self.log_name == 'latest':
-                log_file = open(self.log_path, 'r')
-            else:
-                log_file = gzip.open(self.log_path + '.gz', 'rb')
-            with log_file:
-                for line in log_file:
-                    logger.debug('in log: line=%s', line)
-                    self.started = bool(RE_START.match(line))
-                    logger.debug('in log: %s', self.started)
-                    return self.started
-                self.started = False
-                logger.debug('empty log')
-                return self.started  # empty log
-        else:  # converted file exists, peek it
-            with yaml_file:
-                for line in yaml_file:
-                    if line[:9] == 'started: ':
-                        self.started = line[9] in 'yt'  # yes or true
-                        logger.debug('in yaml: %s', self.started)
-                        return self.started
-                    break
-                raise ValueError('YAML file does not start with `started: `')
+        if self.log_name == 'latest':
+            log_file = open(self.log_path, 'r')
+        else:
+            log_file = gzip.open(self.log_path + '.gz', 'rb')
+        with log_file:
+            for line in log_file:
+                line = line.decode()
+                self.started = bool(self.RE_START.match(line))
+                logger.debug('in log: %s', self.started)
+                return self.started
+            self.started = False  # empty log
+            logger.error('empty log')
+            return self.started
 
 
 class AllLogs:
     def __init__(self, logs_dir):
         self.logs_dir = logs_dir
-        self.logs = {}
+        self.logs = []
         self.sorted_split_log_names = self.collect_sorted_split_log_names()
 
     def collect_sorted_split_log_names(self):
@@ -184,9 +183,9 @@ class AllLogs:
         logs_before = self.get_split_log_names_between(self.sorted_split_log_names, None, to_day)
         for log_split in self.get_split_log_names_between(logs_before, from_day, to_day):
             log_name = self.join_split_name(log_split)
-            previous_split = self.get_split_log_names_between(logs_before, None, log_name)
-            self.logs[log_name] = LogFile(self, log_name)
-            self.logs[log_name].read_log(list(map(self.join_split_name, previous_split)))
+            log = LogFile(self, log_name)
+            log.read_log(self.logs)
+            self.logs.append(log)
             # TODO read_interval
 
     @staticmethod
@@ -213,9 +212,6 @@ class AllLogs:
 
 
 if __name__ == '__main__':
-    logger.debug('main!')
     f = AllLogs("test_logs/")
     # f.read_interval("2015-01-01")
-    logger.debug('reading logs!')
     f.read_interval()
-    logger.debug('all logs read!')
