@@ -123,7 +123,8 @@ class LogFile:
             logger.info('Double leave "another location" %s, at %s %i', name, self.log_name, line_nr)
         if name not in self.online:
             # TODO look in previous logs for the last leave
-            raise ValueError('Player %s left without joining at %s %i' % (name, self.log_name, line_nr))
+            logger.error('Player %s left without joining at %s %i', name, self.log_name, line_nr)
+            return  # raise ValueError('Player %s left without joining at %s %i' % (name, self.log_name, line_nr))
         self.online[name][2] -= 1
         uuid, from_sec, num_logins = self.online[name]
         if num_logins == 0:
