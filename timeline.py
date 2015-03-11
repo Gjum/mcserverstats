@@ -34,7 +34,7 @@ default_settings = {
 
     'name_height': 20,
     'name_border': 5,
-    'name_radius': 0,  # TODO 5
+    'name_radius': 5,
     'name_color': [1, 1, 1],
     'name_shadow_color': [0, 0, 0, 0.5],
     'name_shadow_offset': [1.5, 1.5],
@@ -95,14 +95,14 @@ def draw_text(c, color, text, x_left, y_center, align=0, shadow=None):
 def draw_rounded_rect(c, color, x, y, w, h, radius=0):
     c.set_source_rgba(*color)
     if radius == 0:
-        print('rect %s:%s %sx%s' % (x,y, w,h))
         c.rectangle(x, y, w, h)
     else:
-        print('AAA')
-        c.move_to(x, y)
-        c.rel_line_to(w, 0)
-        c.rel_line_to(0, h)
-        c.rel_line_to(-w, 0)
+        degrees = 3.1416 * 2 / 360
+        c.new_sub_path()
+        c.arc(x + w - radius, y + radius, radius, -90 * degrees, 0 * degrees)
+        c.arc(x + w - radius, y + h - radius, radius, 0 * degrees, 90 * degrees)
+        c.arc(x + radius, y + h - radius, radius, 90 * degrees, 180 * degrees)
+        c.arc(x + radius, y + radius, radius, 180 * degrees, 270 * degrees)
         c.close_path()
     c.fill()
 
@@ -132,6 +132,7 @@ def draw_timeline(path, im_width, title='', settings=default_settings, **kwargs)
              + title_box_height \
              + line_box_height * (len(lines) - 1) + line_height
     h_scale = (im_width - 2 * s['border']) / (t_end - t_start)
+    s['name_radius'] = min(s['name_radius'], s['name_height'] / 2 + s['name_border'])
 
     # draw image
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, im_width, im_height)
@@ -152,7 +153,6 @@ def draw_timeline(path, im_width, title='', settings=default_settings, **kwargs)
 
     # draw lines
     c.set_font_size(s['name_height'])
-    radius = s['name_radius']
     for i, line in enumerate(lines):
         y = i * line_box_height + s['border']
         for session in line:
@@ -160,8 +160,8 @@ def draw_timeline(path, im_width, title='', settings=default_settings, **kwargs)
             color = get_color(color_by_uuid[uuid], s)
             x = s['border'] + (t_from - t_start) * h_scale
             w = (t_to - t_from) * h_scale
-            draw_rounded_rect(c, color, x, y, w, line_height, radius)
-            t_x = x + s['name_border']
+            draw_rounded_rect(c, color, x, y, w, line_height, s['name_radius'])
+            t_x = x + max(s['name_border'], s['name_radius'])
             t_y = y + s['name_border'] + s['name_height'] / 2
             draw_text(c, s['name_color'], name, t_x, t_y,
                       shadow=(s['name_shadow_color'], s['name_shadow_offset']))
