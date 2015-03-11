@@ -1,3 +1,4 @@
+from copy import deepcopy
 import os
 import gzip
 import datetime
@@ -5,10 +6,6 @@ import time
 from glob import glob
 
 """
-Wanted functionality:
-    - DONE time played today per player
-    - DONE total time played per player
-    - DONE punchcard of all players
 TODO respect PEP
 TODO convert exceptions into assumptions and stdErr message
 an interesting line: (? = 0xa7, color code escape char)
@@ -19,6 +16,7 @@ an interesting line: (? = 0xa7, color code escape char)
 
 stillOnline = '?'
 #stillOnline = float("inf") # TODO
+doubleJoin = '!'
 
 def getDateFromFile(filename, daytime = '00:00:00'):
     day = os.path.basename(filename)[:10] # "path/to/2014-12-01-2.log.gz" -> "2014-12-01"
@@ -42,6 +40,14 @@ def getPreviousLog(argLogPath): # TODO untested, unused
             prevLog = log
     return prevLog
 
+def joinDicts(dicA, dicB):
+    for k, v in dicB.iteritems():
+        if k in dicA.data:
+            dicA[k] += dicB[k]
+        else:
+            dicA[k] = deepcopy(v)
+    return dicA
+
 class LogProcessor:
     def __init__(self):
         self.times = {} # online times: dictionary of players with one array of join/leave time pairs per player
@@ -51,69 +57,90 @@ class LogProcessor:
 
     def processFile(self, filename):
         """Reads all info from a file, might be ascii or gzip format.
-        Opens older files in the same directory if needed (see special case #2/#3).
-        Creates self.times, a dict of players with join/leave times.
+        Opens older files in the same directory if needed.
+        Creates/updates self.times, a dict of players with join/leave times.
         """
+        self.times = self.processFileSafe(filename)
+
+    def processFileSafe(self, filename):
+        print('Processing', filename)
         opener = gzip.open if filename[-3:] == '.gz' else open
         with opener(filename) as logfile:
             line = logfile.readline()
             if not line:
                 raise ValueError('Empty log file')
-            actionTime, _ = getDateFromFile(filename, line[1:9].decode())
-            self.firstEvent = actionTime if self.firstEvent is None else min(self.firstEvent, actionTime)
+            action_time, _ = getDateFromFile(filename, line[1:9].decode())
+            self.firstEvent = action_time if self.firstEvent is None else min(self.firstEvent, action_time)
             # first line might be '[12:34:56] [Server thread/INFO]: Starting minecraft server version 1.8.1'
-            freshRestart = line[12:59] == b'Server thread/INFO]: Starting minecraft server '
-            if not freshRestart:
-                logfile.seek(0) # first line might already contain joined/left information
+            fresh_restart = line[12:59] == b'Server thread/INFO]: Starting minecraft server '
+            if not fresh_restart:
+                logfile.seek(0)  # first line might already contain joined/left information
+            new_times = {}
             for line in logfile:
-                # actionTime: seconds since epoch when the event occurred, localtime
-                actionTime, dateString = getDateFromFile(filename, line[1:9].decode())
+                # action_time: seconds since epoch when the event occurred, localtime
+                try:
+                    action_time, date_string = getDateFromFile(filename, line[1:9].decode())
+                except ValueError:
+                    continue  # ignore line
                 # '<' and '*': skip chat
                 if line[-10:] == b' the game\n' and line[33] != b'<' and line[33] != b'*' and line[12:33] == b'Server thread/INFO]: ':
+                    print line
                     # line contains joined/left information, extract it
                     split = line.split()
                     player = split[-4]
                     if player[0] == b'\xa7':
-                        player = player[2:-2] # remove color codes
+                        player = player[2:-2]  # remove color codes
                     player = player.decode().encode('ascii')
                     action = split[-3].decode()
                     # save information
                     # TODO special cases:
-                    #   - join w/o leave: player joins with another instance before the old instance leaves
-                    #   - leave w/o join: new day, new logfile, but server was not restarted and players are still online
+                    #   - Done: join w/o leave: player joins with another instance before the old instance leaves
+                    #   - Done: leave w/o join: new day, new logfile, but server was not restarted and players are still online
                     #   - invisible online players: latest.log: players might have logged in yesterday and still be online
-                    if player not in self.times:
-                        self.times[player] = [] # add empty entry for player
+                    if player not in new_times:
+                        new_times[player] = []  # add empty entry for player
                     if action == 'joined':
                         # TODO special cases should be handled here
-                        if len(self.times[player]) > 0 and self.times[player][-1][1] == stillOnline:
-                            raise NotImplementedError('Double join') # TODO no error in special case #1
-                        self.times[player].append((actionTime, stillOnline))
+                        if len(new_times[player]) > 0 and new_times[player][-1][1] == stillOnline:
+                            new_times[player][-1] = (new_times[player][-1][0], doubleJoin) # mark for next leave
+                        elif len(new_times[player]) > 0 and new_times[player][-1][1] == doubleJoin:
+                            raise NotImplementedError('Multi-join more than 2 levels deep')
+                        else:
+                            new_times[player].append((action_time, stillOnline))
                     elif action == 'left':
                         # TODO special cases should be handled here
-                        # we assume that if a player is online, the newest times[player] entry is (#, stillOnline)
-                        if self.times[player] and self.times[player][-1][1] == stillOnline: # player is online
-                            self.times[player][-1] = (self.times[player][-1][0], actionTime) # just add missing leave time
+                        # we assume that if a player is online, the newest times[player] entry is (#, stillOnline) or (#, doubleJoin)
+                        if new_times[player] and new_times[player][-1][1] == stillOnline: # player is online
+                            new_times[player][-1] = (new_times[player][-1][0], action_time) # just add missing leave time
+                        elif new_times[player] and new_times[player][-1][1] == doubleJoin: # player joined twice, ...
+                            new_times[player][-1] = (new_times[player][-1][0], stillOnline) # next == second leave finishes ontime entry
                         else: # player seems to not be online
-                            if freshRestart:
-                                raise ValueError('Player %s left without logging in after fresh server restart\n    in %s at %s' % (player, filename, dateString))
-                                # TODO check previous logs for when player joined
+                            if fresh_restart:
+                                raise ValueError('Player %s left without logging in after fresh server restart\n    in %s at %s' % (player, filename, date_string))
+                            else: # player joined in earlier log
+                                oldtimes = self.processFileSafe(getPreviousLog(filename))
+                                if not oldtimes[player] or oldtimes[player][-1][1] != stillOnline:
+                                    raise NotImplementedError('We need to go deeper') # TODO join not found in previous log, we need recursion
+                                oldtimes[player][-1] = (oldtimes[player][-1][0], action_time) # just add missing leave time
+                                new_times = joinDicts(oldtimes, new_times)
                     else:
-                        raise ValueError('Invalid action: %s %s the game\n    in %s at %s' % (player, action, filename, dateString))
-            self.lastEvent = max(self.lastEvent, actionTime)
+                        raise ValueError('Invalid action: %s %s the game\n    in %s at %s' % (player, action, filename, date_string))
+            self.lastEvent = max(self.lastEvent, action_time)
             self.processedFiles.append(filename)
+            print('Processed', filename)
+            return new_times
 
-    def getSlots(self, slotSize = 3600):
+    def get_slots(self, slot_size=3600):
         # if this throws an error, check if self.times is filled
-        startSlot = self.firstEvent // slotSize
-        endSlot = self.lastEvent // slotSize
+        startSlot = self.firstEvent // slot_size
+        endSlot = self.lastEvent // slot_size
         numSlots = endSlot - startSlot + 1
         slots = [{} for _ in range(numSlots)]
         for player, playerTimes in self.times.items():
             for joinTime, leaveTime in playerTimes:
                 if leaveTime == stillOnline:
                     leaveTime = self.lastEvent
-                for slotNum in range(joinTime // slotSize, leaveTime // slotSize + 1):
+                for slotNum in range(joinTime // slot_size, leaveTime // slot_size + 1):
                     slotIndex = slotNum - startSlot # position in list
                     if slotIndex < 0:
                         raise ValueError('Negative slot index')
@@ -121,12 +148,12 @@ class LogProcessor:
                         raise ValueError('Slot index too large')
                     if player not in slots[slotIndex]:
                         slots[slotIndex][player] = 0
-                    slotTime = slotNum * slotSize # begin time of current slot in seconds since epoch
+                    slotTime = slotNum * slot_size # begin time of current slot in seconds since epoch
                     playStart = max(joinTime, slotTime)
-                    playEnd = min(leaveTime, slotTime + slotSize)
+                    playEnd = min(leaveTime, slotTime + slot_size)
                     playTime = playEnd - playStart # seconds the player played during current slot
                     slots[slotIndex][player] += int(playTime)
-        return startSlot * slotSize, slots
+        return startSlot * slot_size, slots
 
     def printTotalTimes(self, after = 0, before = float('inf')):
         total = {}
@@ -148,9 +175,11 @@ class LogProcessor:
         for player, playedTime in sorted(total.items(), key=lambda x: x[1], reverse=True):
             print('%-16s %6i sec' % (player+':', playedTime))
 
-    # TODO should go into own script file
     def getPunchcard(self, imagePath, after = None, before = None, slotSize = 3600, title = None, slotTimeFormatString = '%H'):
-        from Punchcard import punchcard
+        slotStartTime, slots = self.get_slots(slotSize)
+        if len(slots) <= 0:
+            print('Error: No data during interval, no punchcard generated' % ())
+            return
         # if not provided, show last day
         if after is None:
             after, _ = getDateFromFile(max(self.processedFiles))
@@ -159,7 +188,6 @@ class LogProcessor:
             before = after + 3600*24
         playerSlots = {}
         skippedSlots = []
-        slotStartTime, slots = self.getSlots(slotSize)
         slotTimes = []
         for i, slot in enumerate(slots):
             if slotStartTime + i*slotSize < after:
@@ -176,13 +204,9 @@ class LogProcessor:
             slotTimes.append(datetime.datetime.fromtimestamp(slotTime).strftime(slotTimeFormatString))
         if title is None:
             title = datetime.datetime.fromtimestamp(slotStartTime).strftime('%Y-%m-%d')
+        from Punchcard import punchcard
+        print(imagePath, playerSlots.values(), playerSlots.keys(), slotTimes, title)
         punchcard.punchcard(imagePath, playerSlots.values(), playerSlots.keys(), slotTimes, title=title)
-
-# TODO should go into own script file
-def printOnlineTimesLastHour(logPath = '../logs/'):
-    processor = LogProcessor()
-    processor.processFile(logPath + '/latest.log')
-    processor.printTotalTimes()
 
 if __name__ == '__main__':
     processor = LogProcessor()
@@ -190,7 +214,7 @@ if __name__ == '__main__':
     processor.processFile('../logs/2014-12-11-1.log.gz')
     processor.processFile('../logs/latest.log')
     print('raw slots:')
-    slotStartTime, slots = processor.getSlots()
+    slotStartTime, slots = processor.get_slots()
     for i, slot in enumerate(slots):
         slotTime = i * 3600 + slotStartTime
         formattedTime = datetime.datetime.fromtimestamp(slotTime).isoformat(' ')
