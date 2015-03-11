@@ -103,7 +103,7 @@ class LogFile:
         if self.stopped:
             for name in list(self.online.keys())[:]:
                 self.found_leave(self.last_event, name, 'Server Stop')
-                logger.info('Stop leaving %s at %s' % (name, self.log_name))
+                logger.info('Server stopped, leaving %s at %s' % (name, self.log_name))
 
     @log_action('^\[User Authenticator #(\d+)/INFO\]: UUID of player ([^ ]+) is ([-\da-f]{36})$')
     def found_uuid(self, seconds, auth_nr, name, uuid):
@@ -113,20 +113,24 @@ class LogFile:
     def found_join(self, seconds, name, ip, e_id, x, y, z):
         if name in self.online:
             logger.warn('Double join %s, at %s %i', name, self.log_name, seconds)
+            self.online[name][2] += 1
         else:
-            self.online[name] = [self.uuids[name], seconds]
+            self.online[name] = [self.uuids[name], seconds, 1]
 
     @log_action('^\[Server thread/INFO\]: ([^ ]+) lost connection: (.*)$')
     def found_leave(self, seconds, name, reason):
         if "text='You logged in from another location'" in reason:
-            logger.warn('Double leave %s ignored, at %s %i', name, self.log_name, seconds)
-            return
+            logger.info('Double leave "another location" %s, at %s %i', name, self.log_name, seconds)
         if name not in self.online:
-            return  # TODO look in previous logs for the last leave
-            # raise ValueError('Player %s left without joining at %s %i' % (name, self.log_name, seconds))
-        uuid, from_sec = self.online[name]
-        del self.online[name]
-        self.times.append([uuid, from_sec, seconds, name])
+            # TODO look in previous logs for the last leave
+            raise ValueError('Player %s left without joining at %s %i' % (name, self.log_name, seconds))
+        self.online[name][2] -= 1
+        uuid, from_sec, num_logins = self.online[name]
+        if num_logins == 0:
+            del self.online[name]
+            self.times.append([uuid, from_sec, seconds, name])
+        elif num_logins < 0:
+            raise ValueError('Player %s left %ix more often than he joined, at %s %i' % (name, -num_logins, self.log_name, seconds))
 
     @log_action('\[Server thread/INFO\]: Stopping server$')
     def found_stop(self, seconds):
@@ -209,6 +213,6 @@ class AllLogs:
 
 
 if __name__ == '__main__':
-    f = AllLogs("test_logs/")
+    f = AllLogs("logs/")
     # f.read_interval("2015-01-01")
     f.read_interval()
