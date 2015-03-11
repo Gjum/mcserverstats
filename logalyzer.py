@@ -98,44 +98,44 @@ class LogFile:
                         if match:
                             args = match.groups()
                             logger.debug('Action: %s (%2i %i) %s: %s' % (self.log_name, line_no, seconds, action.__name__, args))
-                            action(self, seconds, *args)
+                            action(self, line_no, seconds, *args)
                             break
         if self.stopped:
             for name in list(self.online.keys())[:]:
-                self.found_leave(self.last_event, name, 'Server Stop')
+                self.found_leave(-1, self.last_event, name, 'Server Stop')
                 logger.info('Server stopped, leaving %s at %s' % (name, self.log_name))
 
     @log_action('^\[User Authenticator #(\d+)/INFO\]: UUID of player ([^ ]+) is ([-\da-f]{36})$')
-    def found_uuid(self, seconds, auth_nr, name, uuid):
+    def found_uuid(self, line_nr, seconds, auth_nr, name, uuid):
         self.uuids[name] = uuid
 
     @log_action('^\[Server thread/INFO\]: ([^ \[]+)\[([/\d\.:]+)\] logged in with entity id (\d+) at \(([-\d\.]+), ([-\d\.]+), ([-\d\.]+)\)$')
-    def found_join(self, seconds, name, ip, e_id, x, y, z):
+    def found_join(self, line_nr, seconds, name, ip, e_id, x, y, z):
         if name in self.online:
-            logger.warn('Double join %s, at %s %i', name, self.log_name, seconds)
+            logger.warn('Double join %s, at %s %i', name, self.log_name, line_nr)
             self.online[name][2] += 1
         else:
             self.online[name] = [self.uuids[name], seconds, 1]
 
     @log_action('^\[Server thread/INFO\]: ([^ ]+) lost connection: (.*)$')
-    def found_leave(self, seconds, name, reason):
+    def found_leave(self, line_nr, seconds, name, reason):
         if "text='You logged in from another location'" in reason:
-            logger.info('Double leave "another location" %s, at %s %i', name, self.log_name, seconds)
+            logger.info('Double leave "another location" %s, at %s %i', name, self.log_name, line_nr)
         if name not in self.online:
             # TODO look in previous logs for the last leave
-            raise ValueError('Player %s left without joining at %s %i' % (name, self.log_name, seconds))
+            raise ValueError('Player %s left without joining at %s %i' % (name, self.log_name, line_nr))
         self.online[name][2] -= 1
         uuid, from_sec, num_logins = self.online[name]
         if num_logins == 0:
             del self.online[name]
             self.times.append([uuid, from_sec, seconds, name])
         elif num_logins < 0:
-            raise ValueError('Player %s left %ix more often than he joined, at %s %i' % (name, -num_logins, self.log_name, seconds))
+            raise ValueError('Player %s left %ix more often than he joined, at %s %i' % (name, -num_logins, self.log_name, line_nr))
 
     @log_action('\[Server thread/INFO\]: Stopping server$')
-    def found_stop(self, seconds):
+    def found_stop(self, line_nr, seconds):
         if self.stopped:
-            logger.error('Stopped two times at %s %i', self.log_name, seconds)
+            logger.error('Stopped two times at %s %i', self.log_name, line_nr)
         self.stopped = True
 
     def write_yaml(self):
