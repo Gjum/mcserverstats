@@ -143,7 +143,7 @@ def draw_timeline(path, draw_data, im_width, title='', settings=default_settings
     c.set_font_size(s['title_height'])
     draw_text(c, s['title_color'], title,
               s['border'], im_height - (s['border'] + s['title_height'] / 2),
-              im_width - s['border'],
+              'center', im_width - s['border'],
               shadow=(s['title_shadow_color'], s['title_shadow_offset']))
 
     # draw scale
@@ -168,7 +168,7 @@ def draw_timeline(path, draw_data, im_width, title='', settings=default_settings
         c.stroke()
         draw_text(c, s['scale_color'], hour_text,
                   scale_line_x - scale_line_dx / 2, s['border'] + s['scale_height'] / 2,
-                  scale_line_dx,
+                  'center', scale_line_dx,
                   shadow=(s['scale_shadow_color'], s['scale_shadow_offset']))
 
     # draw sessions
