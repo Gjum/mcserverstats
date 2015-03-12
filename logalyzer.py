@@ -206,12 +206,14 @@ class LogDirectory:
         # TODO latest.log
         return times, (last_log.online if last_log else {})
 
-    def collect_user_sessions(self, from_day=None, to_day=None, from_time='00:00:00', to_time='00:00:00'):
+    def collect_user_sessions(self, from_day=None, to_day=None, from_time='00:00:00', to_time='00:00:00', collect_only=None):
         t_start = float('-inf') if from_day is None else date_str_to_epoch(from_day, from_time)
         t_end = float('inf') if to_day is None else date_str_to_epoch(to_day, to_time)
         user_sessions = {}  # uuid -> [sessions]
 
         def crop_and_add(uuid, t_from, t_to, name):
+            if collect_only and uuid not in collect_only:
+                return
             # crop to interval
             t_from = max(t_from, t_start)
             t_to = min(t_to, t_end)
