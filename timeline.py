@@ -26,13 +26,13 @@ default_settings = {
 
     'title_border': 15,
     'title_height': 30,
-    'title_color': [0.2, 0.2, 0.2],
+    'title_color': [0, 0, 0],
     'title_shadow_color': [0, 0, 0, 0.0],
     'title_shadow_offset': [2.2, 2.2],
 
     'scale_line_width': 3,
     'scale_height': 15,
-    'scale_color': [0.2, 0.2, 0.2],
+    'scale_color': [0, 0, 0],
     'scale_shadow_color': [0, 0, 0, 0.0],
     'scale_shadow_offset': [1.8, 1.8],
 
