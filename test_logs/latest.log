@@ -1,0 +1,16 @@
+[14:09:38] [Server thread/INFO]: Starting minecraft server version 1.8.3
+[14:09:38] [Server thread/INFO]: Loading properties
+[14:09:38] [Server thread/INFO]: Default game type: SURVIVAL
+[14:09:38] [Server thread/INFO]: Generating keypair
+[14:09:39] [Server thread/INFO]: Starting Minecraft server on *:25565
+[14:09:39] [Server thread/INFO]: Using epoll channel type
+[14:09:39] [Server thread/INFO]: Preparing level "world"
+[14:09:39] [Server thread/INFO]: Preparing start region for level 0
+[14:09:41] [Server thread/INFO]: Preparing spawn area: 0%
+[14:09:44] [Server thread/INFO]: Done (5.188s)! For help, type "help" or "?"
+[14:09:45] [Server thread/INFO]: [Server] start
+[15:00:00] [Server thread/INFO]: [Server] join Ulexos
+[15:00:00] [User Authenticator #8/INFO]: UUID of player Ulexos is a1d94087-e9c0-412f-b90f-cff2c224d44f
+[15:00:00] [Server thread/INFO]: Ulexos[/95.91.242.240:54254] logged in with entity id 517154 at (-6382.5, 44.0, -957.5)
+[15:00:00] [Server thread/INFO]: §2Ulexos§r joined the game
+[16:00:00] [Server thread/INFO]: [Server] Online  Ulexos 15 -
