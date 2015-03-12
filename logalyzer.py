@@ -9,7 +9,7 @@ import yaml
 
 logging.basicConfig(format='[%(levelname)s %(lineno)s] %(message)s', datefmt='%H:%M:%S')
 logger = logging.getLogger('logalyzer')
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 log_actions = []
 def log_action(regex_str):
@@ -20,7 +20,7 @@ def log_action(regex_str):
     return inner
 
 def date_str_to_epoch(day_str, time_str='00:00:00'):
-    epoch = int(time.mktime(datetime.datetime.strptime(day_str + ' ' + time_str, '%Y-%m-%d %H:%M:%S').timetuple()))
+    epoch = int(time.mktime(datetime.datetime.strptime(day_str + ' ' + time_str, '%Y-%m-%d %H:%M:%S').utctimetuple()))
     return epoch
 
 
@@ -28,10 +28,10 @@ class LogFile:
     RE_TIME = re.compile('^\[([\d:]{8})\] ')
     RE_START = re.compile('^\[([\d:]{8})\] \[Server thread/INFO\]: Starting minecraft server version ')
 
-    def __init__(self, parent, log_name='latest', prev_logs=()):
+    def __init__(self, parent, log_name='latest', prev_log=None):
         self.parent = parent
         self.log_name = log_name
-        self.prev_logs = prev_logs
+        self.prev_log = prev_log
         self.log_path = os.path.join(parent.logs_dir, log_name + '.log')
         self.uuids = {}  # name -> last associated UUID
         self.been_read = False
@@ -52,13 +52,18 @@ class LogFile:
             yaml_file = open(self.log_path + '.yaml', 'r')
         except FileNotFoundError:
             # no converted file exists, create it
-            if not self.peek_start():
-                if len(self.prev_logs) > 0:
-                    prev_log = self.prev_logs[-1]
-                    prev_log.read_log()
-                    self.online = prev_log.online
-                else:
-                    raise ValueError('First log and no server start')
+            self.peek_start()
+            if self.prev_log:
+                self.prev_log.read_log()
+                self.online = self.prev_log.online
+                if self.started:
+                    # TODO crash, update previous yaml instead?
+                    for name in list(self.online.keys())[:]:
+                        self.found_leave(-1, self.prev_log.last_event, name, 'Server Crash')
+                        logger.info('Server started, leaving %s at %s' % (name, self.log_name))
+
+            elif not self.started:
+                raise ValueError('First log and no server start')
             self.convert_log()
             self.write_yaml()
         else:  # converted file exists, read it
@@ -163,6 +168,8 @@ class LogFile:
             for line in log_file:
                 line = line.decode('latin_1')
                 self.started = bool(self.RE_START.match(line))
+                if self.started:
+                    self.first_event = date_str_to_epoch(self.log_name.rsplit('-', 1)[0], line[1:9])
                 logger.debug('peek_start: In log: %s', self.started)
                 return self.started
             self.started = False  # empty log or no start
@@ -170,50 +177,89 @@ class LogFile:
             return self.started
 
 
-class AllLogs:
+class LogDirectory:
     def __init__(self, logs_dir):
         self.logs_dir = logs_dir
-        self.logs = []
-        self.sorted_split_log_names = self.collect_sorted_split_log_names()
-
-    def collect_sorted_split_log_names(self):
-        unsorted_paths = glob.iglob(self.logs_dir + '/*.log.gz')
-        unsorted_log_names = map(lambda p: os.path.split(p)[1][:-7], unsorted_paths)
-        sorted_split_log_names = sorted(map(lambda s: [int(i) for i in s.split('-')], unsorted_log_names))
-        return sorted_split_log_names
+        unsorted_log_names = map(lambda p: os.path.split(p)[1][:-7], glob.iglob(logs_dir + '/*.log.gz'))
+        self.sorted_log_name_tuples = sorted(map(self.split_for_compare, unsorted_log_names))
+        self.log_files = {}  # log_name_tuple -> LogFile
+        prev_log_file = None  # arg for LogFile constructor
+        for log_name_tuple in self.sorted_log_name_tuples:
+            log_name = self.join_from_compare(log_name_tuple)
+            log_file = LogFile(self, log_name, prev_log_file)
+            prev_log_file = log_file
+            self.log_files[log_name_tuple] = log_file
 
     def read_interval(self, from_day=None, to_day=None):
-        """
-        from_day, to_day are in format yyyy-mm-dd
-        """
         logger.debug('read_interval: from_day=%s to_day=%s', from_day, to_day)
-        logs_before = self.get_split_log_names_between(self.sorted_split_log_names, None, to_day)
-        logs_in_range = self.get_split_log_names_between(logs_before, from_day, to_day)
-        for log_split in logs_in_range:
-            log_name = '%i-%02i-%02i-%i' % tuple(log_split)
-            log = LogFile(self, log_name, self.logs)
-            log.read_log()
-            self.logs.append(log)
-            # TODO read_interval
+        for name_tuple in self.get_log_name_tuples_between(from_day, to_day):
+            self.log_files[name_tuple].read_log()
+        # TODO latest.log
 
-    @staticmethod
-    def get_split_log_names_between(logs_in_range, from_log=None, to_log=None):
+    def collect_data(self, from_day=None, to_day=None):
+        self.read_interval(from_day, to_day)
+        times = []
+        last_log = None
+        for log_name_tuple in self.get_log_name_tuples_between(from_day, to_day):
+            last_log = self.log_files[log_name_tuple]
+            times.extend(last_log.times)
+        # TODO latest.log
+        return times, (last_log.online if last_log else {})
+
+    def collect_user_sessions(self, from_day=None, to_day=None, from_time='00:00:00', to_time='00:00:00'):
+        t_start = float('-inf') if from_day is None else date_str_to_epoch(from_day, from_time)
+        t_end = float('inf') if to_day is None else date_str_to_epoch(to_day, to_time)
+        user_sessions = {}  # uuid -> [sessions]
+
+        def crop_and_add(uuid, t_from, t_to, name):
+            # crop to interval
+            t_from = max(t_from, t_start)
+            t_to = min(t_to, t_end)
+            if t_from >= t_to:
+                return
+            # add data to collection
+            if uuid not in user_sessions:
+                user_sessions[uuid] = []
+            user_sessions[uuid].append([uuid, t_from, t_to, name])
+
+        times, online = self.collect_data(from_day, to_day)
+        for uuid, t_from, t_to, name in times:
+            crop_and_add(uuid, t_from, t_to, name)
+        for name, sess_begin in online.items():
+            uuid, t_from = sess_begin[:2]
+            crop_and_add(uuid, t_from, t_end, name)
+        return user_sessions
+
+    def collect_uptimes(self, from_day=None, to_day=None, from_time='00:00:00', to_time='00:00:00'):
+        return []
+
+    def get_log_name_tuples_between(self, from_log=None, to_log=None):
         """
         from_log, to_log are in format yyyy-mm-dd or yyyy-mm-dd-n,
         from_log may be None to accept all logs before to_log,
         to_log may be None to accept all logs after from_log
         """
+        between = self.sorted_log_name_tuples
         if from_log is not None:
-            from_split = [int(i) for i in from_log.split('-')]
-            logs_in_range = filter(lambda log: from_split <= log, logs_in_range)
+            from_split = self.split_for_compare(from_log)
+            between = filter(lambda log: from_split <= log, between)
         if to_log is not None:
-            to_split = [int(i) for i in to_log.split('-')]
-            logs_in_range = filter(lambda log: log < to_split, logs_in_range)
-        logs_in_range = list(logs_in_range)
-        return logs_in_range
+            to_split = self.split_for_compare(to_log)
+            between = filter(lambda log: log < to_split, between)
+        between = list(between)
+        return between
+
+    @staticmethod
+    def split_for_compare(log_name):
+        return tuple(int(i) for i in log_name.split('-'))
+
+    @staticmethod
+    def join_from_compare(log_name_tuple):
+        return '%i-%02i-%02i-%i' % log_name_tuple
 
 
 if __name__ == '__main__':
-    f = AllLogs("logs/")
-    # f.read_interval("2015-01-01")
-    f.read_interval()
+    test_logs = LogDirectory('test_logs/')
+    print(test_logs.collect_user_sessions())
+    # logs = LogDirectory('logs/')
+    # print(logs.collect_user_sessions('2014-12-12', '2014-12-13'))
