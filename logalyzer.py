@@ -33,7 +33,7 @@ class LogFile:
         self.prev_log = prev_log
         self.log_path = os.path.join(logs_dir, log_name + '.log')
         if self.log_name == 'latest':
-            self.day_str = time.strftime("%Y-%m-%d", time.localtime(os.path.getmtime(self.log_path)))
+            self.day_str = time.strftime('%Y-%m-%d', time.localtime(os.path.getmtime(self.log_path)))
         else:
             self.day_str = self.log_name.rsplit('-', 1)[0]
         self.uuids = {}  # name -> last associated UUID

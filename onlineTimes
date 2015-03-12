@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+
+from datetime import datetime, timedelta
+from time import strftime
+import logalyzer
+import sys
+
+# apply args
+if len(sys.argv) < 2:
+    print('Usage: %s <path to log files> [<day> | [<from-day> <to-day>]]' % sys.argv[0])
+    print('    day format is "YYYY-MM-DD", get times from...')
+    print('    - no days: total times,')
+    print('    - day only: times during that day,')
+    print('    - from and to: time between from and to, to is exclusive')
+    sys.exit(0)
+logs = logalyzer.LogDirectory(sys.argv[1])
+from_day = to_day = None
+if len(sys.argv) > 2:
+    from_day = sys.argv[2]
+    to_day = strftime('%Y-%m-%d', (datetime.strptime(from_day, '%Y-%m-%d') + timedelta(days=1)).timetuple())
+if len(sys.argv) > 3:
+    to_day = sys.argv[3]
+
+# get data
+total = {}  # uuid -> seconds
+last_name = {}  # uuid -> name
+for uuid, sessions in logs.collect_user_sessions(from_day, to_day).items():
+    total[uuid] = 0
+    for uuid, t_from, t_to, name in sessions:
+        total[uuid] += t_to - t_from
+        last_name[uuid] = name
+
+# sort by time in descending order
+for uuid, seconds in sorted(total.items(), key=lambda x: x[1], reverse=True):
+    human_time = str(timedelta(seconds=seconds))
+    print('%-16s %6is or %17s' % (last_name[uuid] + ':', seconds, human_time))
