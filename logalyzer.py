@@ -9,7 +9,7 @@ import yaml
 
 logging.basicConfig(format='[%(levelname)s %(lineno)s] %(message)s', datefmt='%H:%M:%S')
 logger = logging.getLogger('logalyzer')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 log_actions = []
 def log_action(regex_str):

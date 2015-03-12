@@ -78,7 +78,6 @@ def draw_text(c, color, text, x_left, y_center, align='left', max_w=None, shadow
     x_bearing, y_bearing, text_width, text_height, x_advance, y_advance = c.text_extents(text)
     if max_w is not None and max_w < text_width:
         return  # do not draw, too little space
-    print(max_w)
     x = x_left - x_bearing
     y = y_center - y_bearing - text_height/2
     if align == 'center':
@@ -157,7 +156,7 @@ def draw_timeline(path, draw_data, im_width, title='', settings=default_settings
             continue  # out of range by rounding
         text = '%02i' % (hour % 24)
         hours.append((sec, text))
-    # TODO prevent overlapping, rotate by 90°
+    # TODO prevent overlapping, rotate by 90 degrees
     scale_line_dx = hours[1][0] - hours[0][0]
     scale_line_y = s['border'] + s['scale_height']
     scale_line_dy = line_box_height * len(lines) + s['line_border']
@@ -187,8 +186,8 @@ def draw_timeline(path, draw_data, im_width, title='', settings=default_settings
                       max_w=w - 2 * name_horiz_border,
                       shadow=(s['name_shadow_color'], s['name_shadow_offset']))
 
-            # save image
-            surface.write_to_png(path)
+    # save image
+    surface.write_to_png(path)
 
 
 def get_draw_data(log_path, from_day=None, to_day=None, from_time='00:00:00', to_time='00:00:00'):
