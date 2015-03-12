@@ -28,11 +28,14 @@ class LogFile:
     RE_TIME = re.compile('^\[([\d:]{8})\] ')
     RE_START = re.compile('^\[([\d:]{8})\] \[Server thread/INFO\]: Starting minecraft server version ')
 
-    def __init__(self, parent, log_name='latest', prev_log=None):
-        self.parent = parent
+    def __init__(self, logs_dir, log_name, prev_log=None):
         self.log_name = log_name
         self.prev_log = prev_log
-        self.log_path = os.path.join(parent.logs_dir, log_name + '.log')
+        self.log_path = os.path.join(logs_dir, log_name + '.log')
+        if self.log_name == 'latest':
+            self.day_str = time.strftime("%Y-%m-%d", time.localtime(os.path.getmtime(self.log_path)))
+        else:
+            self.day_str = self.log_name.rsplit('-', 1)[0]
         self.uuids = {}  # name -> last associated UUID
         self.been_read = False
 
@@ -77,13 +80,13 @@ class LogFile:
         logger.debug('Done reading %s ------------------------------', self.log_name)
 
     def convert_log(self):
-        logger.info('Converting %s', self.log_name)
+        if self.log_name == 'latest': logger.debug('Converting latest')
+        else: logger.info('Converting %s', self.log_name)
         if self.log_name == 'latest':
             log_file = open(self.log_path, 'rb')
         else:
             log_file = gzip.open(self.log_path + '.gz', 'rb')
         with log_file:
-            day_str = self.log_name.rsplit('-', 1)[0]
             line_no = 0
             for line in log_file:
                 if b' [@' == line[32:35]:
@@ -94,7 +97,7 @@ class LogFile:
                 time_match = self.RE_TIME.match(line)
                 if time_match:  # only look at lines with a timestamp
                     time_str = line[1:9]
-                    seconds = date_str_to_epoch(day_str, time_str)
+                    seconds = date_str_to_epoch(self.day_str, time_str)
                     if self.first_event is None:
                         self.first_event = seconds
                     if self.last_event is None or self.last_event < seconds:
@@ -148,7 +151,7 @@ class LogFile:
 
     def write_yaml(self):
         if self.log_name == 'latest':
-            logger.warn('Not writing YAML for latest.log, aborting')
+            logger.debug('Not writing YAML for latest.log, aborting')
             return
         with open(self.log_path + '.yaml', 'w') as yaml_file:
             logger.debug('Writing %s', self.log_path + '.yaml')
@@ -163,7 +166,7 @@ class LogFile:
             logger.warn('peek_start: Already peeked')
             return self.started
         if self.log_name == 'latest':
-            log_file = open(self.log_path, 'r')
+            log_file = open(self.log_path, 'rb')
         else:
             log_file = gzip.open(self.log_path + '.gz', 'rb')
         with log_file:
@@ -171,7 +174,7 @@ class LogFile:
                 line = line.decode('latin_1')
                 self.started = bool(self.RE_START.match(line))
                 if self.started:
-                    self.first_event = date_str_to_epoch(self.log_name.rsplit('-', 1)[0], line[1:9])
+                    self.first_event = date_str_to_epoch(self.day_str, line[1:9])
                 logger.debug('peek_start: In log: %s', self.started)
                 return self.started
             self.started = False  # empty log or no start
@@ -188,15 +191,17 @@ class LogDirectory:
         prev_log_file = None  # arg for LogFile constructor
         for log_name_tuple in self.sorted_log_name_tuples:
             log_name = self.join_from_compare(log_name_tuple)
-            log_file = LogFile(self, log_name, prev_log_file)
+            log_file = LogFile(logs_dir, log_name, prev_log_file)
             prev_log_file = log_file
             self.log_files[log_name_tuple] = log_file
+        self.log_files['latest'] = LogFile(logs_dir, 'latest', prev_log_file)
 
     def read_interval(self, from_day=None, to_day=None):
         logger.debug('read_interval: from_day=%s to_day=%s', from_day, to_day)
         for name_tuple in self.get_log_name_tuples_between(from_day, to_day):
             self.log_files[name_tuple].read_log()
-        # TODO latest.log
+        if to_day is None:
+            self.log_files['latest'].read_log()
 
     def collect_data(self, from_day=None, to_day=None):
         self.read_interval(from_day, to_day)
@@ -205,7 +210,9 @@ class LogDirectory:
         for log_name_tuple in self.get_log_name_tuples_between(from_day, to_day):
             last_log = self.log_files[log_name_tuple]
             times.extend(last_log.times)
-        # TODO latest.log
+        if to_day is None:
+            last_log = self.log_files['latest']
+            times.extend(last_log.times)
         return times, (last_log.online if last_log else {})
 
     def collect_user_sessions(self, from_day=None, to_day=None, from_time='00:00:00', to_time='00:00:00', collect_only=None):
