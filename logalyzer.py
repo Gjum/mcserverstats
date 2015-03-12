@@ -86,6 +86,8 @@ class LogFile:
             day_str = self.log_name.rsplit('-', 1)[0]
             line_no = 0
             for line in log_file:
+                if b' [@' == line[32:35]:
+                    continue  # ignore command block activity
                 logger.debug('[Log %s@%i] %s', self.log_name, line_no, line)
                 line_no += 1
                 line = line.decode('latin_1')
@@ -262,6 +264,7 @@ class LogDirectory:
 
 if __name__ == '__main__':
     test_logs = LogDirectory('test_logs/')
-    print(test_logs.collect_user_sessions())
-    # logs = LogDirectory('logs/')
-    # print(logs.collect_user_sessions('2014-12-12', '2014-12-13'))
+    for user, sessions in test_logs.collect_user_sessions().items():
+        print(user)
+        for session in sessions:
+            print('   ', session)
