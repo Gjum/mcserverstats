@@ -191,14 +191,14 @@ def draw_timeline(draw_data, img_path, im_width, title='', settings=default_sett
     surface.write_to_png(img_path)
 
 
-def get_draw_data(logs, from_day=None, to_day=None, from_time='00:00:00', to_time='00:00:00'):
-    named_sessions = list(logs.collect_user_sessions(from_day, to_day, from_time, to_time).values())
-    uptimes = logs.collect_uptimes(from_day, to_day, from_time, to_time)
+def get_draw_data(logs, from_date=None, to_date=None):
+    named_sessions = list(logs.collect_user_sessions(from_date, to_date).values())
+    uptimes = logs.collect_uptimes(from_date, to_date)
     lines = [uptimes] + named_sessions
-    t_start = min(s[1] for sessions in named_sessions for s in sessions) \
-        if from_day is None else logalyzer.date_str_to_epoch(from_day, from_time)
-    t_end = max(s[2] for sessions in named_sessions for s in sessions) \
-        if to_day is None else logalyzer.date_str_to_epoch(to_day, to_time)
+    t_start = logalyzer.date_str_to_epoch(from_date) \
+              or min(s[1] for sessions in named_sessions for s in sessions)
+    t_end = logalyzer.date_str_to_epoch(to_date) \
+            or max(s[2] for sessions in named_sessions for s in sessions)
     return lines, t_start, t_end
 
 
