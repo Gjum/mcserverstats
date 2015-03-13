@@ -19,10 +19,27 @@ def log_action(regex_str):
         return fun
     return inner
 
-def date_str_to_epoch(day_str, time_str='00:00:00'):
-    epoch = int(time.mktime(datetime.datetime.strptime(day_str + ' ' + time_str, '%Y-%m-%d %H:%M:%S').utctimetuple()))
+def date_str_to_epoch(date_str, time_str='00:00:00'):
+    if date_str is None:
+        return None
+    date_str = ensure_full_date(date_str, time_str)
+    epoch = int(time.mktime(datetime.datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S').utctimetuple()))
     return epoch
 
+def ensure_full_date(date_str, time_str='00:00:00'):
+    if ' ' not in date_str:
+        date_str += ' ' + time_str
+    return date_str
+
+def ensure_day_only(date_str):
+    """
+    `None` -> `None`
+    `Y-M-D` -> `Y-M-D`
+    `Y-M-D H:M:S` -> `Y-M-D`
+    """
+    if date_str and ' ' in date_str:
+        date_str = date_str.split(' ', 1)[0]
+    return date_str
 
 class LogFile:
     RE_TIME = re.compile('^\[([\d:]{8})\] ')
@@ -196,32 +213,42 @@ class LogDirectory:
             self.log_files[log_name_tuple] = log_file
         self.log_files['latest'] = LogFile(logs_dir, 'latest', prev_log_file)
 
-    def read_interval(self, from_day=None, to_day=None):
-        logger.debug('read_interval: from_day=%s to_day=%s', from_day, to_day)
-        for name_tuple in self.get_log_name_tuples_between(from_day, to_day):
-            self.log_files[name_tuple].read_log()
-        if to_day is None:
-            self.log_files['latest'].read_log()
+    def read_interval(self, from_log=None, to_log=None, exclusive_to=True):
+        """
+        Returns an iterator over the LogFiles that lie between `from_log` and `to_log`.
+        These are also read and converted if necessary.
+        """
+        logger.debug('read_interval: from_log=%s to_log=%s', from_log, to_log)
+        for name_tuple in self.iter_log_name_tuples_between(from_log, to_log, exclusive_to):
+            log_file = self.log_files[name_tuple]
+            log_file.read_log()
+            yield log_file
+        if to_log is None:
+            log_file = self.log_files['latest']
+            log_file.read_log()
+            yield log_file
 
-    def collect_data(self, from_day=None, to_day=None):
-        self.read_interval(from_day, to_day)
+    def collect_data(self, from_log=None, to_log=None, exclusive_to=True):
+        """
+        Returns a tuple of `times` and `online`:
+        `times`: a list of all sessions,
+        `online`: a map of online players: `player_name -> [uuid, join_time, login_count]`
+        """
+        from_log, to_log = map(ensure_day_only, [from_log, to_log])
         times = []
         last_log = None
-        for log_name_tuple in self.get_log_name_tuples_between(from_day, to_day):
-            last_log = self.log_files[log_name_tuple]
-            times.extend(last_log.times)
-        if to_day is None:
-            last_log = self.log_files['latest']
-            times.extend(last_log.times)
+        for log_file in self.read_interval(from_log, to_log, exclusive_to):
+            times.extend(log_file.times)
+            last_log = log_file
         return times, (last_log.online if last_log else {})
 
-    def collect_user_sessions(self, from_day=None, to_day=None, from_time='00:00:00', to_time='00:00:00', collect_only=None):
-        t_start = float('-inf') if from_day is None else date_str_to_epoch(from_day, from_time)
-        t_end = float('inf') if to_day is None else date_str_to_epoch(to_day, to_time)
+    def collect_user_sessions(self, from_date=None, to_date=None, whitelist=None):
+        t_start = date_str_to_epoch(from_date) or float('-inf')
+        t_end = date_str_to_epoch(to_date) or time.time()
         user_sessions = {}  # uuid -> [sessions]
 
         def crop_and_add(uuid, t_from, t_to, name):
-            if collect_only and uuid not in collect_only:
+            if whitelist and uuid not in whitelist:
                 return
             # crop to interval
             t_from = max(t_from, t_start)
@@ -233,7 +260,7 @@ class LogDirectory:
                 user_sessions[uuid] = []
             user_sessions[uuid].append([uuid, t_from, t_to, name])
 
-        times, online = self.collect_data(from_day, to_day)
+        times, online = self.collect_data(from_date, to_date)
         for uuid, t_from, t_to, name in times:
             crop_and_add(uuid, t_from, t_to, name)
         for name, sess_begin in online.items():
@@ -241,10 +268,10 @@ class LogDirectory:
             crop_and_add(uuid, t_from, t_end, name)
         return user_sessions
 
-    def collect_uptimes(self, from_day=None, to_day=None, from_time='00:00:00', to_time='00:00:00'):
+    def collect_uptimes(self, from_date=None, to_date=None):
         return []
 
-    def get_log_name_tuples_between(self, from_log=None, to_log=None):
+    def iter_log_name_tuples_between(self, from_log=None, to_log=None, exclusive_to=True):
         """
         from_log, to_log are in format yyyy-mm-dd or yyyy-mm-dd-n,
         from_log may be None to accept all logs before to_log,
@@ -256,8 +283,10 @@ class LogDirectory:
             between = filter(lambda log: from_split <= log, between)
         if to_log is not None:
             to_split = self.split_for_compare(to_log)
-            between = filter(lambda log: log < to_split, between)
-        between = list(between)
+            if exclusive_to:
+                between = filter(lambda log: log < to_split, between)
+            else:
+                between = filter(lambda log: log <= to_split, between)
         return between
 
     @staticmethod
