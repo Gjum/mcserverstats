@@ -18,6 +18,9 @@ import logalyzer
 \-----border-----/
 """
 
+def color_from_uuid(uuid, settings):
+    return settings['color_'+uuid[4]]
+
 default_settings = {
     'font_name': 'sans',
     'bg_color': [0, 0, 0, 0.0],
@@ -59,11 +62,9 @@ default_settings = {
     'color_d': [1.0, 0.3, 1.0],
     'color_e': [1.0, 1.0, 0.3],
     'color_f': [1.0, 1.0, 1.0],
-}
 
-def color_char_from_uuid(uuid):
-    # TODO use linear distribution for now
-    return uuid[4]
+    'color_from_uuid': color_from_uuid,
+}
 
 def color_from_char(color_char, settings):
     color = settings.get('color_'+color_char, [0,0,0])
@@ -109,7 +110,7 @@ def draw_rounded_rect(c, color, x, y, w, h, radius=0):
         c.close_path()
     c.fill()
 
-def draw_timeline(path, draw_data, im_width, title='', settings=default_settings, **kwargs):
+def draw_timeline(draw_data, img_path, im_width, title='', settings=default_settings, **kwargs):
     for key in kwargs:
         settings[key] = kwargs[key]
 
@@ -176,7 +177,7 @@ def draw_timeline(path, draw_data, im_width, title='', settings=default_settings
         y = i * line_box_height + s['border'] + scale_box_height - s['line_border']
         for session in line:
             uuid, t_from, t_to, name = session
-            color = color_from_char(color_char_from_uuid(uuid), s)
+            color = s['color_from_uuid'](uuid, settings)
             x = s['border'] + (t_from - t_start) * h_stretch
             w = (t_to - t_from) * h_stretch
             draw_rounded_rect(c, color, x, y, w, line_height, s['name_radius'])
@@ -187,11 +188,10 @@ def draw_timeline(path, draw_data, im_width, title='', settings=default_settings
                       shadow=(s['name_shadow_color'], s['name_shadow_offset']))
 
     # save image
-    surface.write_to_png(path)
+    surface.write_to_png(img_path)
 
 
-def get_draw_data(log_path, from_day=None, to_day=None, from_time='00:00:00', to_time='00:00:00'):
-    logs = logalyzer.LogDirectory(log_path)
+def get_draw_data(logs, from_day=None, to_day=None, from_time='00:00:00', to_time='00:00:00'):
     named_sessions = list(logs.collect_user_sessions(from_day, to_day, from_time, to_time).values())
     uptimes = logs.collect_uptimes(from_day, to_day, from_time, to_time)
     lines = [uptimes] + named_sessions
@@ -203,6 +203,6 @@ def get_draw_data(log_path, from_day=None, to_day=None, from_time='00:00:00', to
 
 
 if __name__ == '__main__':
-    # draw_data = get_draw_data('logs/', '2014-12-12', '2014-12-13')
-    draw_data = get_draw_data('test_logs/')
-    draw_timeline('test.png', draw_data, 2000, 'Title! Yey!')
+    logs = logalyzer.LogDirectory('test_logs/')
+    draw_data = get_draw_data(logs)
+    draw_timeline(draw_data, 'test.png', 2000, 'Title! Yey!')

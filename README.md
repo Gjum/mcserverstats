@@ -1,49 +1,61 @@
 Minecraft Log Analyzer
 ======================
 
-Analyze the online times of players by scanning `.log.gz` logfiles.
-Includes utilities to render GitHub-style punchcards.
+Analyze the online times of players on your Minecraft server by scanning the logfiles.
+
+Includes utilities to collect interesting user data and render timelines.
 
 Installation
 ------------
 
-`git clone --recursive https://github.com/Gjum/minecraft-log-analyzer.git`
+`git clone https://github.com/Gjum/mc-logalyzer.git`
 
 Usage
 -----
 
-Not much implemented yet...
+`./timelineDay <path to log files> <png_path> [<day> | [<from-day> <to-day>]]`
 
-###Wishlist:
+day format is "YYYY-MM-DD", get times from...
 
-`$ ./punchcardLastHour <path/to/logs/>`: punchcard of the last hour
+- no days: last 24h,
+- `day` only: times during that day,
+- `from` and `to`: time between `from` and `to`, `to` is exclusive
 
-`$ ./punchcardDay <path/to/logs/> [YYY-MM-DD = today]`: punchcard of the day
+`./onlineTimes <path to log files> [<day> | [<from-day> <to-day>]]`
 
-`$ ./onlineDay <path/to/logs/> [YYYY-MM-DD = today]`: total time each user was online that day
+day format is "YYYY-MM-DD", get times from...
 
-`$ ./onlineTotal <path/to/logs/>`: total time each user was online ever
+- no days: total times,
+- `day` only: times during that day,
+- `from` and `to`: time between `from` and `to`, `to` is exclusive
 
-Open issues for new use cases.
+### Roadmap
+
+TODO
+
+[Open an issue](issues/new) for a new use case.
+
+### Testing
+
+Before running the tests, make sure the log files are compressed:
+
+    gzip -k test_logs/2*.log
+
+Also make sure `latest.log` was not modified recently:
+
+    touch -t 01042000 test_logs/latest.log
 
 Example output
 --------------
 
-Punchcard:
-![punchcard example](https://i.imgur.com/C6Qqvpa.png)
-
 Online times:
-```
- 8119 seconds or 02:15:19 HHL
- 7184 seconds or 01:59:44 Moqtah_Laila
-```
 
-Slots:
-```
-Tue 12.08.2014 19:00 Moqtah_Laila (1min)
-Tue 12.08.2014 20:00 Moqtah_Laila (39min) HHL (55min)
-Tue 12.08.2014 21:00 Moqtah_Laila (60min) HHL (60min)
-Tue 12.08.2014 22:00 Moqtah_Laila (21min) HHL (21min)
-Tue 12.08.2014 23:00 HHL (0min)
-```
+    HHL:             160372s or   1 day, 20:32:52
+    Offlinegott:     135802s or   1 day, 13:43:22
+    Gjum:            129754s or   1 day, 12:02:34
+    Udilor:           61365s or          17:02:45
+    Ulexos:           33557s or           9:19:17
 
+Timeline:
+
+TODO Image
