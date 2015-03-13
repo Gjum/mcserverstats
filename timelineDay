@@ -1,30 +1,33 @@
 #!/usr/bin/env python3
 
-from datetime import datetime, timedelta
-from time import strftime
+import timeutils
 import logalyzer
 import timeline
 import sys
 
 if len(sys.argv) <= 2:
-    print('Usage: %s <path/to/logs> <png_path> [<day> | [<from-date> <to-date>]]' % sys.argv[0])
+    print('Usage: %s <path/to/logs> <png_path> [<from-date> [to-date]]' % sys.argv[0])
     print('    date format is "YYYY-MM-DD" or "YYYY-MM-DD HH:MM:SS", get timeline from...')
-    print('    - no dates: last 24h,')
-    print('    - day only: times during that day,')
+    print('    - no dates: the 24h before the last log event,')
+    print('    - from only: the 24h after that date,')
     print('    - from and to: time between from and to, to is exclusive')
     sys.exit(0)
+
 logs = logalyzer.LogDirectory(sys.argv[1])
 img_path = sys.argv[2]
 
-from_date = strftime('%Y-%m-%d %H:%M:%S')
+to_date = timeutils.latest_log_date_str(logs.logs_dir)
+from_date = timeutils.add_to_date_str(to_date, days=-1)
 if len(sys.argv) > 3:
-    from_date = logalyzer.ensure_full_date(sys.argv[3])
-to_date = strftime('%Y-%m-%d %H:%M:%S', (datetime.strptime(from_date, '%Y-%m-%d %H:%M:%S') + timedelta(days=1)).timetuple())
+    from_date = timeutils.ensure_full_date(sys.argv[3])
+    to_date = timeutils.add_to_date_str(from_date, days=1)
 if len(sys.argv) > 4:
-    to_date = logalyzer.ensure_full_date(sys.argv[4])
+    to_date = timeutils.ensure_full_date(sys.argv[4])
 
-im_width = 1000
-title = from_date
+print('Creating timeline from', from_date, 'to', to_date)
+
+im_width = 2000
+title = '%s - %s' % (from_date, to_date)
 
 draw_data = timeline.get_draw_data(logs, from_date, to_date)
 timeline.draw_timeline(draw_data, img_path, im_width, title)

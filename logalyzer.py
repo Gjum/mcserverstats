@@ -1,6 +1,6 @@
 import glob
 import gzip
-import datetime
+import timeutils
 import logging
 import time
 import os
@@ -19,28 +19,6 @@ def log_action(regex_str):
         return fun
     return inner
 
-def date_str_to_epoch(date_str, time_str='00:00:00'):
-    if date_str is None:
-        return None
-    date_str = ensure_full_date(date_str, time_str)
-    epoch = int(time.mktime(datetime.datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S').utctimetuple()))
-    return epoch
-
-def ensure_full_date(date_str, time_str='00:00:00'):
-    if ' ' not in date_str:
-        date_str += ' ' + time_str
-    return date_str
-
-def ensure_day_only(date_str):
-    """
-    `None` -> `None`
-    `Y-M-D` -> `Y-M-D`
-    `Y-M-D H:M:S` -> `Y-M-D`
-    """
-    if date_str and ' ' in date_str:
-        date_str = date_str.split(' ', 1)[0]
-    return date_str
-
 class LogFile:
     RE_TIME = re.compile('^\[([\d:]{8})\] ')
     RE_START = re.compile('^\[([\d:]{8})\] \[Server thread/INFO\]: Starting minecraft server version ')
@@ -50,7 +28,8 @@ class LogFile:
         self.prev_log = prev_log
         self.log_path = os.path.join(logs_dir, log_name + '.log')
         if self.log_name == 'latest':
-            self.day_str = time.strftime('%Y-%m-%d', time.localtime(os.path.getmtime(self.log_path)))
+            # for timestamps in log lines
+            self.day_str = timeutils.ensure_day_only(timeutils.latest_log_date_str(self.log_path))
         else:
             self.day_str = self.log_name.rsplit('-', 1)[0]
         self.uuids = {}  # name -> last associated UUID
@@ -114,7 +93,7 @@ class LogFile:
                 time_match = self.RE_TIME.match(line)
                 if time_match:  # only look at lines with a timestamp
                     time_str = line[1:9]
-                    seconds = date_str_to_epoch(self.day_str, time_str)
+                    seconds = timeutils.date_str_to_epoch(self.day_str, time_str)
                     if self.first_event is None:
                         self.first_event = seconds
                     if self.last_event is None or self.last_event < seconds:
@@ -191,7 +170,7 @@ class LogFile:
                 line = line.decode('latin_1')
                 self.started = bool(self.RE_START.match(line))
                 if self.started:
-                    self.first_event = date_str_to_epoch(self.day_str, line[1:9])
+                    self.first_event = timeutils.date_str_to_epoch(self.day_str, line[1:9])
                 logger.debug('peek_start: In log: %s', self.started)
                 return self.started
             self.started = False  # empty log or no start
@@ -213,13 +192,13 @@ class LogDirectory:
             self.log_files[log_name_tuple] = log_file
         self.log_files['latest'] = LogFile(logs_dir, 'latest', prev_log_file)
 
-    def read_interval(self, from_log=None, to_log=None, exclusive_to=True):
+    def read_interval(self, from_log=None, to_log=None, inclusive_to=False):
         """
         Returns an iterator over the LogFiles that lie between `from_log` and `to_log`.
         These are also read and converted if necessary.
         """
         logger.debug('read_interval: from_log=%s to_log=%s', from_log, to_log)
-        for name_tuple in self.iter_log_name_tuples_between(from_log, to_log, exclusive_to):
+        for name_tuple in self.iter_log_name_tuples_between(from_log, to_log, inclusive_to):
             log_file = self.log_files[name_tuple]
             log_file.read_log()
             yield log_file
@@ -228,23 +207,25 @@ class LogDirectory:
             log_file.read_log()
             yield log_file
 
-    def collect_data(self, from_log=None, to_log=None, exclusive_to=True):
+    def collect_data(self, from_log=None, to_log=None, inclusive_to=False):
         """
         Returns a tuple of `times` and `online`:
         `times`: a list of all sessions,
         `online`: a map of online players: `player_name -> [uuid, join_time, login_count]`
         """
-        from_log, to_log = map(ensure_day_only, [from_log, to_log])
+        if timeutils.date_str_sep in to_log:
+            inclusive_to = True
+        from_log, to_log = map(timeutils.ensure_day_only, [from_log, to_log])
         times = []
         last_log = None
-        for log_file in self.read_interval(from_log, to_log, exclusive_to):
+        for log_file in self.read_interval(from_log, to_log, inclusive_to):
             times.extend(log_file.times)
             last_log = log_file
         return times, (last_log.online if last_log else {})
 
     def collect_user_sessions(self, from_date=None, to_date=None, whitelist=None):
-        t_start = date_str_to_epoch(from_date) or float('-inf')
-        t_end = date_str_to_epoch(to_date) or time.time()
+        t_start = timeutils.date_str_to_epoch(from_date) or float('-inf')
+        t_end = timeutils.date_str_to_epoch(to_date) or time.time()
         user_sessions = {}  # uuid -> [sessions]
 
         def crop_and_add(uuid, t_from, t_to, name):
@@ -271,7 +252,7 @@ class LogDirectory:
     def collect_uptimes(self, from_date=None, to_date=None):
         return []
 
-    def iter_log_name_tuples_between(self, from_log=None, to_log=None, exclusive_to=True):
+    def iter_log_name_tuples_between(self, from_log=None, to_log=None, inclusive_to=False):
         """
         from_log, to_log are in format yyyy-mm-dd or yyyy-mm-dd-n,
         from_log may be None to accept all logs before to_log,
@@ -280,13 +261,13 @@ class LogDirectory:
         between = self.sorted_log_name_tuples
         if from_log is not None:
             from_split = self.split_for_compare(from_log)
-            between = filter(lambda log: from_split <= log, between)
+            between = filter(lambda log: from_split <= log[:3], between)
         if to_log is not None:
             to_split = self.split_for_compare(to_log)
-            if exclusive_to:
-                between = filter(lambda log: log < to_split, between)
+            if inclusive_to:
+                between = filter(lambda log: log[:3] <= to_split, between)
             else:
-                between = filter(lambda log: log <= to_split, between)
+                between = filter(lambda log: log[:3] < to_split, between)
         return between
 
     @staticmethod

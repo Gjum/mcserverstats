@@ -1,5 +1,5 @@
 import cairo
-import logalyzer
+import timeutils
 
 """
 /-----border------\
@@ -70,21 +70,36 @@ def color_from_char(color_char, settings):
     color = settings.get('color_'+color_char, [0,0,0])
     return color
 
-def draw_text(c, color, text, x_left, y_center, align='left', max_w=None, shadow=None):
+# Thanks Phlip! http://stackoverflow.com/a/18792190
+class SettingsDict(dict):
+    def __init__(self, **kwargs):
+        super(SettingsDict, self).__init__(**kwargs)
+        self.__dict__ = self
+
+LEFT = 'left'
+CENTER = 'center'
+RIGHT = 'right'
+
+def draw_text(c, text, color, x_left, y_center, align=LEFT, max_w=None, shadow=None):
     """
-    x: left end of text space
-    y: vertical center of text space
-    align: 'left', 'center', 'right'
+    :param c: cairo drawing context
+    :param text: the text to draw
+    :param color: list or tuple with RGB or RGBA colors, floats from 0.0 to 1.0
+    :param x_left: left end of text space
+    :param y_center: vertical center of text space
+    :param align: 'left', 'center', 'right'
+    :param max_w: maximum width the text might use, set this for center/right alignment
+    :param shadow: tuple of (color, (offset_x, offset_y))
     """
     x_bearing, y_bearing, text_width, text_height, x_advance, y_advance = c.text_extents(text)
     if max_w is not None and max_w < text_width:
         return  # do not draw, too little space
     x = x_left - x_bearing
     y = y_center - y_bearing - text_height/2
-    if align == 'center':
+    if align == CENTER:
         x += (max_w - text_width) / 2
-    elif align == 'right':
-        raise NotImplementedError()
+    elif align == RIGHT:
+        x += max_w - text_width
     if shadow:
         s_color, s_offset = shadow
         s_dx, s_dy = s_offset
@@ -113,96 +128,91 @@ def draw_rounded_rect(c, color, x, y, w, h, radius=0):
 def draw_timeline(draw_data, img_path, im_width, title='', settings=default_settings, **kwargs):
     for key in kwargs:
         settings[key] = kwargs[key]
+    s = SettingsDict(**settings)
 
     lines, t_start, t_end = draw_data
 
     # calculate sizes
-    s = settings
-    title_box_height = s['title_height'] + s['title_border'] \
-        if len(title) > 0 and s['title_height'] > 0 else 0
-    scale_box_height = s['scale_height'] + 2 * s['line_border'] \
-        if s['scale_height'] > 0 else 0
-    line_height = 2 * s['name_border'] + s['name_height']
-    line_box_height = s['line_border'] + line_height
-    im_height = 2 * s['border'] \
+    title_box_height = s.title_height + s.title_border \
+        if len(title) > 0 and s.title_height > 0 else 0
+    scale_box_height = s.scale_height + 2 * s.line_border \
+        if s.scale_height > 0 else 0
+    line_height = 2 * s.name_border + s.name_height
+    line_box_height = s.line_border + line_height
+    im_height = 2 * s.border \
                 + title_box_height + scale_box_height \
                 + line_box_height * (len(lines) - 1) + line_height
-    inner_width = im_width - 2 * s['border']
+    inner_width = im_width - 2 * s.border
     h_stretch = inner_width / (t_end - t_start)
-    s['name_radius'] = min(s['name_radius'], s['name_height'] / 2 + s['name_border'])
-    name_horiz_border = max(s['name_border'], s['name_radius'])
+    s.name_radius = min(s.name_radius, s.name_height / 2 + s.name_border)
+    name_horiz_border = max(s.name_border, s.name_radius)
 
     # start drawing
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, im_width, im_height)
     c = cairo.Context(surface)
-    c.select_font_face(s['font_name'])
-    c.set_source_rgba(*s['bg_color'])
+    c.select_font_face(s.font_name)
+    c.set_source_rgba(*s.bg_color)
     c.paint()
 
     # draw title
-    c.set_font_size(s['title_height'])
-    draw_text(c, s['title_color'], title,
-              s['border'], im_height - (s['border'] + s['title_height'] / 2),
-              'center', im_width - s['border'],
-              shadow=(s['title_shadow_color'], s['title_shadow_offset']))
+    c.set_font_size(s.title_height)
+    draw_text(c, title, s.title_color, s.border, im_height - (s.border + s.title_height / 2), CENTER,
+              im_width - s.border, shadow=(s.title_shadow_color, s.title_shadow_offset))
 
     # draw scale
-    c.set_source_rgba(*s['scale_color'])
-    c.set_line_width(s['scale_line_width'])
-    c.set_font_size(s['scale_height'])
+    c.set_source_rgba(*s.scale_color)
+    c.set_line_width(s.scale_line_width)
+    c.set_font_size(s.scale_height)
     hours = []
     for sec in range(t_start, t_end, 3600):
-        hour = sec // 3600
-        if hour * 3600 < t_start:
+        sec_rounded = (sec // 3600) * 3600
+        if sec_rounded < t_start:
             continue  # out of range by rounding
-        text = '%02i' % (hour % 24)
+        text = timeutils.epoch_to_date_str(sec_rounded, '%H')
         hours.append((sec, text))
     # TODO prevent overlapping, rotate by 90 degrees
     scale_line_dx = hours[1][0] - hours[0][0]
-    scale_line_y = s['border'] + s['scale_height']
-    scale_line_dy = line_box_height * len(lines) + s['line_border']
+    scale_line_y = s.border + s.scale_height
+    scale_line_dy = line_box_height * len(lines) + s.line_border
     for sec, hour_text in hours:
-        scale_line_x = s['border'] + (sec - t_start) * h_stretch
+        scale_line_x = s.border + (sec - t_start) * h_stretch
         c.move_to(scale_line_x, scale_line_y)
         c.rel_line_to(0, scale_line_dy)
         c.stroke()
-        draw_text(c, s['scale_color'], hour_text,
-                  scale_line_x - scale_line_dx / 2, s['border'] + s['scale_height'] / 2,
-                  'center', scale_line_dx,
-                  shadow=(s['scale_shadow_color'], s['scale_shadow_offset']))
+        draw_text(c, hour_text, s.scale_color, scale_line_x - scale_line_dx / 2, s.border + s.scale_height / 2,
+                  CENTER, scale_line_dx, shadow=(s.scale_shadow_color, s.scale_shadow_offset))
 
     # draw sessions
-    c.set_font_size(s['name_height'])
+    c.set_font_size(s.name_height)
     for i, line in enumerate(lines):
-        y = i * line_box_height + s['border'] + scale_box_height - s['line_border']
+        y = i * line_box_height + s.border + scale_box_height - s.line_border
         for session in line:
             uuid, t_from, t_to, name = session
-            color = s['color_from_uuid'](uuid, settings)
-            x = s['border'] + (t_from - t_start) * h_stretch
+            color = s.color_from_uuid(uuid, settings)
+            x = s.border + (t_from - t_start) * h_stretch
             w = (t_to - t_from) * h_stretch
-            draw_rounded_rect(c, color, x, y, w, line_height, s['name_radius'])
+            draw_rounded_rect(c, color, x, y, w, line_height, s.name_radius)
             t_x = x + name_horiz_border
-            t_y = y + s['name_border'] + s['name_height'] / 2
-            draw_text(c, s['name_color'], name, t_x, t_y,
-                      max_w=w - 2 * name_horiz_border,
-                      shadow=(s['name_shadow_color'], s['name_shadow_offset']))
+            t_y = y + s.name_border + s.name_height / 2
+            draw_text(c, name, s.name_color, t_x, t_y, max_w=w - 2 * name_horiz_border,
+                      shadow=(s.name_shadow_color, s.name_shadow_offset))
 
     # save image
     surface.write_to_png(img_path)
-
 
 def get_draw_data(logs, from_date=None, to_date=None):
     named_sessions = list(logs.collect_user_sessions(from_date, to_date).values())
     uptimes = logs.collect_uptimes(from_date, to_date)
     lines = [uptimes] + named_sessions
-    t_start = logalyzer.date_str_to_epoch(from_date) \
+    t_start = timeutils.date_str_to_epoch(from_date) \
               or min(s[1] for sessions in named_sessions for s in sessions)
-    t_end = logalyzer.date_str_to_epoch(to_date) \
+    t_end = timeutils.date_str_to_epoch(to_date) \
             or max(s[2] for sessions in named_sessions for s in sessions)
     return lines, t_start, t_end
 
 
 if __name__ == '__main__':
+    import logalyzer
     logs = logalyzer.LogDirectory('test_logs/')
-    draw_data = get_draw_data(logs)
+    draw_data = get_draw_data(logs, None, '2015-01-04 21:00:00')
     draw_timeline(draw_data, 'test.png', 2000, 'Title! Yey!')
