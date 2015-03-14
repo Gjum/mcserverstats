@@ -1,0 +1,10 @@
+first_event: 1420167600
+last_event: 1420174800
+online:
+  Offlinegott: [9f352de0-b533-425c-9435-89b918ae4602, 1420095600, 1]
+  Ulexos: [a1d94087-e9c0-412f-b90f-cff2c224d44f, 1420171200, 1]
+started: false
+stopped: null
+times:
+- [808e727f-895a-4ac2-b246-4b6da2ca9451, 1420084800, 1420167600, HHL]
+- [a1d94087-e9c0-412f-b90f-cff2c224d44f, 1420092000, 1420171200, Ulexos]
