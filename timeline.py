@@ -204,17 +204,9 @@ def draw_timeline(draw_data, img_path, title='', im_width=None, settings=default
     # TODO draw uptimes
     for uptime in uptimes:
         pass
-    c.set_source_rgba(0, 0, 0)
-    c.set_line_width(s.uptimes_height)
-    c.move_to(s.border, scale_box_height + s.uptimes_height / 2)
-    c.line_to(im_width - s.border, scale_box_height + s.uptimes_height / 2)
-    c.stroke()
-    
-    c.set_source_rgba(*s.uptimes_color)
-    c.set_line_width(s.uptimes_height / 2)
-    c.move_to(s.border, scale_box_height + s.uptimes_height / 2)
-    c.line_to(im_width - s.border, scale_box_height + s.uptimes_height / 2)
-    c.stroke()
+    draw_rounded_rect(c, s.uptimes_color, s.border, scale_box_height,
+                      im_width - 2 * s.border, s.uptimes_height,
+                      s.uptimes_height, (2, 0,0,0))
 
     # draw sessions
     y_offset = s.border + scale_box_height + s.uptimes_height
@@ -226,7 +218,7 @@ def draw_timeline(draw_data, img_path, title='', im_width=None, settings=default
             color = s.color_from_uuid(uuid, settings)
             x = s.border + (t_from - t_start) * h_stretch
             w = (t_to - t_from) * h_stretch
-            draw_rounded_rect(c, color, x, y, w, line_height, s.name_radius)
+            draw_rounded_rect(c, color, x, y, w, line_height, s.name_radius, (2, 0,0,0))
             t_x = x + name_horiz_border
             t_y = y + s.name_border + s.name_height / 2
             draw_text(c, name, s.name_color, t_x, t_y, max_w=w - 2 * name_horiz_border,
