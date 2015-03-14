@@ -5,6 +5,8 @@ import timeutils
 /-----border------\
 | |||||scale||||| |
 | ||line_border|| |
+| ----uptimes---- |
+| ||line_border|| |
 | /-name_border-\ |
 | | NAME ====== | |
 | \-name_border-/ |
@@ -33,7 +35,9 @@ default_settings = {
     'title_shadow_color': [0, 0, 0, 0.0],
     'title_shadow_offset': [2.2, 2.2],
 
-    'scale_line_width': 3,
+    'scale_line_width': 1,
+    'scale_line_width_noon': 3,
+    'scale_line_width_midnight': 5,
     'scale_height': 15,
     'scale_color': [0, 0, 0],
     'scale_shadow_color': [0, 0, 0, 0.0],
@@ -45,6 +49,9 @@ default_settings = {
     'name_color': [1, 1, 1],
     'name_shadow_color': [0, 0, 0, 0.5],
     'name_shadow_offset': [1.8, 1.8],
+
+    'uptimes_height': 10,
+    'uptimes_color': [0, 1, 0],
 
     'color_0': [0.0, 0.0, 0.0],
     'color_1': [0.0, 0.0, 0.7],
@@ -88,12 +95,14 @@ def draw_text(c, text, color, x_left, y_center, align=LEFT, max_w=None, shadow=N
     :param x_left: left end of text space
     :param y_center: vertical center of text space
     :param align: 'left', 'center', 'right'
-    :param max_w: maximum width the text might use, set this for center/right alignment
+    :param max_w: maximum width the text might use, set this to 0 for center/right alignment starting from x_left
     :param shadow: tuple of (color, (offset_x, offset_y))
     """
     x_bearing, y_bearing, text_width, text_height, x_advance, y_advance = c.text_extents(text)
     if max_w is not None and max_w < text_width:
         return  # do not draw, too little space
+    if not max_w:  # set for centering/right aligning
+        max_w = 0
     x = x_left - x_bearing
     y = y_center - y_bearing - text_height/2
     if align == CENTER:
@@ -116,6 +125,7 @@ def draw_rounded_rect(c, color, x, y, w, h, radius=0):
     if radius == 0:
         c.rectangle(x, y, w, h)
     else:
+        radius = min(radius, w / 2)
         degrees = 3.1416 * 2 / 360
         c.new_sub_path()
         c.arc(x + w - radius, y + radius, radius, -90 * degrees, 0 * degrees)
@@ -125,12 +135,14 @@ def draw_rounded_rect(c, color, x, y, w, h, radius=0):
         c.close_path()
     c.fill()
 
-def draw_timeline(draw_data, img_path, im_width, title='', settings=default_settings, **kwargs):
+def draw_timeline(draw_data, img_path, title='', im_width=None, settings=default_settings, **kwargs):
     for key in kwargs:
         settings[key] = kwargs[key]
     s = SettingsDict(**settings)
 
-    lines, t_start, t_end = draw_data
+    t_start, t_end, lines, uptimes = draw_data
+    if not im_width:
+        im_width = int((t_end - t_start) / 3600 * s.scale_height * 1.5)  # TODO
 
     # calculate sizes
     title_box_height = s.title_height + s.title_border \
@@ -140,7 +152,7 @@ def draw_timeline(draw_data, img_path, im_width, title='', settings=default_sett
     line_height = 2 * s.name_border + s.name_height
     line_box_height = s.line_border + line_height
     im_height = 2 * s.border \
-                + title_box_height + scale_box_height \
+                + title_box_height + scale_box_height + s.uptimes_height + s.line_border \
                 + line_box_height * (len(lines) - 1) + line_height
     inner_width = im_width - 2 * s.border
     h_stretch = inner_width / (t_end - t_start)
@@ -163,29 +175,37 @@ def draw_timeline(draw_data, img_path, im_width, title='', settings=default_sett
     c.set_source_rgba(*s.scale_color)
     c.set_line_width(s.scale_line_width)
     c.set_font_size(s.scale_height)
-    hours = []
-    for sec in range(t_start, t_end, 3600):
-        sec_rounded = (sec // 3600) * 3600
-        if sec_rounded < t_start:
-            continue  # out of range by rounding
-        text = timeutils.epoch_to_date_str(sec_rounded, '%H')
-        hours.append((sec, text))
-    # TODO prevent overlapping, rotate by 90 degrees
-    scale_line_dx = hours[1][0] - hours[0][0]
     scale_line_y = s.border + s.scale_height
-    scale_line_dy = line_box_height * len(lines) + s.line_border
-    for sec, hour_text in hours:
-        scale_line_x = s.border + (sec - t_start) * h_stretch
+    scale_line_dy = line_box_height * len(lines) + s.line_border * 2 + s.uptimes_height
+    for sec in range((t_start // 3600) * 3600, t_end + 3600, 3600):
+        if sec < t_start or sec > t_end:
+            continue  # out of range by rounding
+        hour_text = timeutils.epoch_to_date_str(sec, '%k')  # hour 0-23, space padded
+        if hour_text == ' 0': c.set_line_width(s.scale_line_width_midnight)
+        elif hour_text == '12': c.set_line_width(s.scale_line_width_noon)
+        scale_line_x = int(s.border + (sec - t_start) * h_stretch) - c.get_line_width() / 2
         c.move_to(scale_line_x, scale_line_y)
         c.rel_line_to(0, scale_line_dy)
         c.stroke()
-        draw_text(c, hour_text, s.scale_color, scale_line_x - scale_line_dx / 2, s.border + s.scale_height / 2,
-                  CENTER, scale_line_dx, shadow=(s.scale_shadow_color, s.scale_shadow_offset))
+        if hour_text in (' 0', '12'): c.set_line_width(s.scale_line_width)
+        # TODO rotate by 90 degrees
+        draw_text(c, hour_text, s.scale_color, scale_line_x, s.border + s.scale_height / 2,
+                  CENTER, None, shadow=(s.scale_shadow_color, s.scale_shadow_offset))
+
+    # TODO draw uptimes
+    c.set_source_rgba(*s.uptimes_color)
+    c.set_line_width(s.uptimes_height)
+    for uptime in uptimes:
+        pass
+    c.move_to(s.border, scale_box_height + s.uptimes_height / 2)
+    c.line_to(im_width - s.border, scale_box_height + s.uptimes_height / 2)
+    c.stroke()
 
     # draw sessions
+    y_offset = s.border + scale_box_height + s.uptimes_height
     c.set_font_size(s.name_height)
     for i, line in enumerate(lines):
-        y = i * line_box_height + s.border + scale_box_height - s.line_border
+        y = i * line_box_height + y_offset
         for session in line:
             uuid, t_from, t_to, name = session
             color = s.color_from_uuid(uuid, settings)
@@ -201,18 +221,17 @@ def draw_timeline(draw_data, img_path, im_width, title='', settings=default_sett
     surface.write_to_png(img_path)
 
 def get_draw_data(logs, from_date=None, to_date=None):
-    named_sessions = list(logs.collect_user_sessions(from_date, to_date).values())
+    lines = list(logs.collect_user_sessions(from_date, to_date).values())
     uptimes = logs.collect_uptimes(from_date, to_date)
-    lines = [uptimes] + named_sessions
     t_start = timeutils.date_str_to_epoch(from_date) \
-              or min(s[1] for sessions in named_sessions for s in sessions)
+              or min(s[1] for sessions in lines for s in sessions)
     t_end = timeutils.date_str_to_epoch(to_date) \
-            or max(s[2] for sessions in named_sessions for s in sessions)
-    return lines, t_start, t_end
+            or max(s[2] for sessions in lines for s in sessions)
+    return t_start, t_end, lines, uptimes
 
 
 if __name__ == '__main__':
     import logalyzer
     logs = logalyzer.LogDirectory('test_logs/')
     draw_data = get_draw_data(logs, None, '2015-01-04 21:00:00')
-    draw_timeline(draw_data, 'test.png', 2000, 'Title! Yey!')
+    draw_timeline(draw_data, 'test.png', 'Title! Yey!')

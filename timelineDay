@@ -26,8 +26,7 @@ if len(sys.argv) > 4:
 
 print('Creating timeline from', from_date, 'to', to_date)
 
-im_width = 2000
 title = '%s - %s' % (from_date, to_date)
 
 draw_data = timeline.get_draw_data(logs, from_date, to_date)
-timeline.draw_timeline(draw_data, img_path, im_width, title)
+timeline.draw_timeline(draw_data, img_path, title)

@@ -250,7 +250,7 @@ class LogDirectory:
         return user_sessions
 
     def collect_uptimes(self, from_date=None, to_date=None):
-        return []
+        return []  # TODO
 
     def iter_log_name_tuples_between(self, from_log=None, to_log=None, inclusive_to=False):
         """
