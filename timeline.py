@@ -35,9 +35,10 @@ default_settings = {
     'title_shadow_color': [0, 0, 0, 0.0],
     'title_shadow_offset': [2.2, 2.2],
 
-    'scale_line_width': 1,
-    'scale_line_width_noon': 3,
-    'scale_line_width_midnight': 5,
+    'scale_line_width': 2,
+    'scale_line_width_noon': 4,
+    'scale_line_width_midnight': 7,
+    'scale_gap': 40,
     'scale_height': 15,
     'scale_color': [0, 0, 0],
     'scale_shadow_color': [0, 0, 0, 0.0],
@@ -142,7 +143,7 @@ def draw_timeline(draw_data, img_path, title='', im_width=None, settings=default
 
     t_start, t_end, lines, uptimes = draw_data
     if not im_width:
-        im_width = int((t_end - t_start) / 3600 * s.scale_height * 1.5)  # TODO
+        im_width = int((t_end - t_start) / 3600 * s.scale_gap)  # TODO
 
     # calculate sizes
     title_box_height = s.title_height + s.title_border \
@@ -193,10 +194,16 @@ def draw_timeline(draw_data, img_path, title='', im_width=None, settings=default
                   CENTER, None, shadow=(s.scale_shadow_color, s.scale_shadow_offset))
 
     # TODO draw uptimes
-    c.set_source_rgba(*s.uptimes_color)
-    c.set_line_width(s.uptimes_height)
     for uptime in uptimes:
         pass
+    c.set_source_rgba(0, 0, 0)
+    c.set_line_width(s.uptimes_height)
+    c.move_to(s.border, scale_box_height + s.uptimes_height / 2)
+    c.line_to(im_width - s.border, scale_box_height + s.uptimes_height / 2)
+    c.stroke()
+    
+    c.set_source_rgba(*s.uptimes_color)
+    c.set_line_width(s.uptimes_height / 2)
     c.move_to(s.border, scale_box_height + s.uptimes_height / 2)
     c.line_to(im_width - s.border, scale_box_height + s.uptimes_height / 2)
     c.stroke()
