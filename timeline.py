@@ -88,6 +88,18 @@ LEFT = 'left'
 CENTER = 'center'
 RIGHT = 'right'
 
+
+def fit_text(c, text, max_w):
+    width = lambda: c.text_extents(text)[2]
+    if not max_w or not text or width() <= max_w:
+        return text  # done
+    text += '~'
+    while width() > max_w and text != '~':
+        text = text[:-2] + '~'
+        print(text, width(), max_w)
+    return text
+
+
 def draw_text(c, text, color, x_left, y_center, align=LEFT, max_w=None, shadow=None):
     """
     :param c: cairo drawing context
@@ -99,9 +111,10 @@ def draw_text(c, text, color, x_left, y_center, align=LEFT, max_w=None, shadow=N
     :param max_w: maximum width the text might use, set this to 0 for center/right alignment starting from x_left
     :param shadow: tuple of (color, (offset_x, offset_y))
     """
+    text = fit_text(c, text, max_w)
+    if not text:
+        return  # do not draw
     x_bearing, y_bearing, text_width, text_height, x_advance, y_advance = c.text_extents(text)
-    if max_w is not None and max_w < text_width:
-        return  # do not draw, too little space
     if not max_w:  # set for centering/right aligning
         max_w = 0
     x = x_left - x_bearing
