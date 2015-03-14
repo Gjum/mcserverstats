@@ -21,9 +21,11 @@ if len(sys.argv) > 3:
     to_date = timeutils.ensure_full_date(sys.argv[3])
 
 if from_date:
-    print('Calculating online times from', from_date, 'to', to_date)
+    print('Online times from',
+          timeutils.human_date_str(from_date),
+          'to', timeutils.human_date_str(to_date) or 'now')
 else:
-    print('Calculating total online times')
+    print('Total online times')
 
 total = {}  # uuid -> seconds
 last_name = {}  # uuid -> name

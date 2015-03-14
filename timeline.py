@@ -241,4 +241,7 @@ if __name__ == '__main__':
     import logalyzer
     logs = logalyzer.LogDirectory('test_logs/')
     draw_data = get_draw_data(logs, None, '2015-01-04 21:00:00')
-    draw_timeline(draw_data, 'test.png', 'Title! Yey!')
+    t_start, t_end = draw_data[:2]
+    title = '%s - %s' % (timeutils.human_date_str(timeutils.epoch_to_date_str(t_start)),
+                         timeutils.human_date_str(timeutils.epoch_to_date_str(t_end)) or 'now')
+    draw_timeline(draw_data, 'test.png', title)

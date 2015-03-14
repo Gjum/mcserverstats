@@ -43,5 +43,15 @@ def add_to_date_str(date_str, **kwargs):
         ).timetuple()
     )
 
+def human_date_str(date_str):
+    """
+    `Y-M-D 00:00:00` -> `Y-M-D`
+    `Y-M-D HH:MM:SS` -> `Y-M-D HH:MM:SS`
+    `None` -> `None`
+    """
+    if date_str and date_str.endswith(midnight_str):
+        date_str = date_str[:-9]
+    return date_str
+
 def human_time(seconds):
     return str(timedelta(seconds=seconds))
