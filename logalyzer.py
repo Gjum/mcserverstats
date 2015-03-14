@@ -213,7 +213,7 @@ class LogDirectory:
         `times`: a list of all sessions,
         `online`: a map of online players: `player_name -> [uuid, join_time, login_count]`
         """
-        if timeutils.date_str_sep in to_log:
+        if to_log and timeutils.date_str_sep in to_log:
             inclusive_to = True
         from_log, to_log = map(timeutils.ensure_day_only, [from_log, to_log])
         times = []
