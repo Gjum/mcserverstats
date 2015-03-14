@@ -135,27 +135,30 @@ def draw_text(c, text, color, x_left, y_center, align=LEFT, max_w=None, shadow=N
     return text_width
 
 def draw_rounded_rect(c, color, x, y, w, h, radius=0, border=None):
-    def rect(radius=0):
-        if radius == 0:
-            c.rectangle(x, y, w, h)
-        else:
-            radius = min(radius, w / 2, h / 2)
-            degrees = 3.1416 * 2 / 360
-            c.new_sub_path()
-            c.arc(x + w - radius, y + radius, radius, -90 * degrees, 0 * degrees)
-            c.arc(x + w - radius, y + h - radius, radius, 0 * degrees, 90 * degrees)
-            c.arc(x + radius, y + h - radius, radius, 90 * degrees, 180 * degrees)
-            c.arc(x + radius, y + radius, radius, 180 * degrees, 270 * degrees)
-            c.close_path()
+    if radius == 0:
+        c.rectangle(x, y, w, h)
+    else:
+        radius = min(radius, w / 2, h / 2)
+        degrees = 3.1416 * 2 / 360
+        c.new_sub_path()
+        c.arc(x + w - radius, y + radius, radius, -90 * degrees, 0 * degrees)
+        c.arc(x + w - radius, y + h - radius, radius, 0 * degrees, 90 * degrees)
+        c.arc(x + radius, y + h - radius, radius, 90 * degrees, 180 * degrees)
+        c.arc(x + radius, y + radius, radius, 180 * degrees, 270 * degrees)
+        c.close_path()
     c.set_source_rgba(*color)
-    rect(radius)
-    c.fill()
-    if border:
+    if not border:
+        c.fill()
+    else:
+        c.fill_preserve()
         border_w, *border_color = border
         c.set_line_width(border_w)
         c.set_source_rgba(*border_color)
-        rect(radius)
         c.stroke()
+
+def dark_border(width, color):
+    r, g, b = map(lambda c: c / 2, color)
+    return width, r, g, b
 
 def draw_timeline(draw_data, img_path, title='', im_width=None, settings=default_settings, **kwargs):
     for key in kwargs:
@@ -214,12 +217,13 @@ def draw_timeline(draw_data, img_path, title='', im_width=None, settings=default
         draw_text(c, hour_text, s.scale_color, scale_line_x, s.border + s.scale_height / 2,
                   CENTER, None, shadow=(s.scale_shadow_color, s.scale_shadow_offset))
 
-    # TODO draw uptimes
-    for uptime in uptimes:
-        pass
-    draw_rounded_rect(c, s.uptimes_color, s.border, scale_box_height,
-                      im_width - 2 * s.border, s.uptimes_height,
-                      s.uptimes_height, (2, 0,0,0))
+    # draw uptimes
+    for t_from, t_to in uptimes:
+        x = s.border + (t_from - t_start) * h_stretch
+        w = (t_to - t_from) * h_stretch
+        draw_rounded_rect(c, s.uptimes_color, x, scale_box_height,
+                          w, s.uptimes_height,
+                          s.uptimes_height, (2, 0,0,0))
 
     # draw sessions
     y_offset = s.border + scale_box_height + s.uptimes_height
@@ -231,7 +235,7 @@ def draw_timeline(draw_data, img_path, title='', im_width=None, settings=default
             color = s.color_from_uuid(uuid, settings)
             x = s.border + (t_from - t_start) * h_stretch
             w = (t_to - t_from) * h_stretch
-            draw_rounded_rect(c, color, x, y, w, line_height, s.name_radius, (2, 0,0,0))
+            draw_rounded_rect(c, color, x, y, w, line_height, s.name_radius, dark_border(2, color))
             t_x = x + name_horiz_border
             t_y = y + s.name_border + s.name_height / 2
             draw_text(c, name, s.name_color, t_x, t_y, max_w=w - 2 * name_horiz_border,
@@ -242,18 +246,20 @@ def draw_timeline(draw_data, img_path, title='', im_width=None, settings=default
 
 def get_draw_data(logs, from_date=None, to_date=None):
     lines = list(logs.collect_user_sessions(from_date, to_date).values())
-    uptimes = logs.collect_uptimes(from_date, to_date)
-    t_start = timeutils.date_str_to_epoch(from_date) \
-              or min(s[1] for sessions in lines for s in sessions)
-    t_end = timeutils.date_str_to_epoch(to_date) \
-            or max(s[2] for sessions in lines for s in sessions)
+    uptimes = list(logs.collect_uptimes(from_date, to_date))
+    t_start = int(min(uptimes[0][0] if uptimes else float('inf'),
+                      timeutils.date_str_to_epoch(from_date) \
+                      or min(s[1] for sessions in lines for s in sessions)))
+    t_end = int(max(uptimes[-1][1] if uptimes else float('-inf'),
+                    timeutils.date_str_to_epoch(to_date) \
+                    or max(s[2] for sessions in lines for s in sessions)))
     return t_start, t_end, lines, uptimes
 
 
 if __name__ == '__main__':
     import logalyzer
     logs = logalyzer.LogDirectory('test_logs/')
-    draw_data = get_draw_data(logs, None, '2015-01-04 21:00:00')
+    draw_data = get_draw_data(logs, None, None)
     t_start, t_end = draw_data[:2]
     title = '%s - %s' % (timeutils.human_date_str(timeutils.epoch_to_date_str(t_start)),
                          timeutils.human_date_str(timeutils.epoch_to_date_str(t_end)) or 'now')

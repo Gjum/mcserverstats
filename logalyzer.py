@@ -29,7 +29,7 @@ class LogFile:
         self.log_path = os.path.join(logs_dir, log_name + '.log')
         if self.log_name == 'latest':
             # for timestamps in log lines
-            self.day_str = timeutils.ensure_day_only(timeutils.latest_log_date_str(self.log_path))
+            self.day_str = timeutils.ensure_day_only(timeutils.latest_log_date_str(logs_dir))
         else:
             self.day_str = self.log_name.rsplit('-', 1)[0]
         self.uuids = {}  # name -> last associated UUID
@@ -92,8 +92,7 @@ class LogFile:
                 line = line.decode('latin_1')
                 time_match = self.RE_TIME.match(line)
                 if time_match:  # only look at lines with a timestamp
-                    time_str = line[1:9]
-                    seconds = timeutils.date_str_to_epoch(self.day_str, time_str)
+                    seconds = timeutils.date_str_to_epoch(self.day_str, line[1:9])
                     if self.first_event is None:
                         self.first_event = seconds
                     if self.last_event is None or self.last_event < seconds:
@@ -207,25 +206,24 @@ class LogDirectory:
             log_file.read_log()
             yield log_file
 
-    def collect_data(self, from_log=None, to_log=None, inclusive_to=False):
+    def collect_data(self, from_date=None, to_date=None, inclusive_to=False):
         """
         Returns a tuple of `times` and `online`:
         `times`: a list of all sessions,
         `online`: a map of online players: `player_name -> [uuid, join_time, login_count]`
         """
-        if to_log and timeutils.date_str_sep in to_log:
-            inclusive_to = True
-        from_log, to_log = map(timeutils.ensure_day_only, [from_log, to_log])
+        from_day, to_day, inclusive_to = self.date_to_log_day(from_date, to_date, inclusive_to)
         times = []
         last_log = None
-        for log_file in self.read_interval(from_log, to_log, inclusive_to):
+        for log_file in self.read_interval(from_day, to_day, inclusive_to):
             times.extend(log_file.times)
             last_log = log_file
         return times, (last_log.online if last_log else {})
 
-    def collect_user_sessions(self, from_date=None, to_date=None, whitelist=None):
+    def collect_user_sessions(self, from_date=None, to_date=None, inclusive_to=False, whitelist=None):
         t_start = timeutils.date_str_to_epoch(from_date) or float('-inf')
-        t_end = timeutils.date_str_to_epoch(to_date) or time.time()
+        t_end = timeutils.date_str_to_epoch(to_date or timeutils.latest_log_date_str(self.logs_dir))
+        # TODO inclusive_to
         user_sessions = {}  # uuid -> [sessions]
 
         def crop_and_add(uuid, t_from, t_to, name):
@@ -241,7 +239,7 @@ class LogDirectory:
                 user_sessions[uuid] = []
             user_sessions[uuid].append([uuid, t_from, t_to, name])
 
-        times, online = self.collect_data(from_date, to_date)
+        times, online = self.collect_data(from_date, to_date, inclusive_to)
         for uuid, t_from, t_to, name in times:
             crop_and_add(uuid, t_from, t_to, name)
         for name, sess_begin in online.items():
@@ -249,8 +247,22 @@ class LogDirectory:
             crop_and_add(uuid, t_from, t_end, name)
         return user_sessions
 
-    def collect_uptimes(self, from_date=None, to_date=None):
-        return []  # TODO
+    def collect_uptimes(self, from_date=None, to_date=None, inclusive_to=False):
+        from_day, to_day, inclusive_to = self.date_to_log_day(from_date, to_date, inclusive_to)
+        first_event = None
+        for log_file in self.read_interval(from_day, to_day, inclusive_to):
+            if log_file.started and log_file.prev_log and not log_file.prev_log.stopped:
+                yield (first_event or timeutils.date_str_to_epoch(from_date),
+                       log_file.prev_log.last_event)
+                first_event = None
+            if not first_event:
+                first_event = log_file.first_event
+            if log_file.stopped:
+                yield (first_event, log_file.last_event)
+                first_event = None
+        if first_event:
+            yield (first_event, timeutils.date_str_to_epoch(
+                to_date or timeutils.latest_log_date_str(self.logs_dir)))
 
     def iter_log_name_tuples_between(self, from_log=None, to_log=None, inclusive_to=False):
         """
@@ -269,6 +281,13 @@ class LogDirectory:
             else:
                 between = filter(lambda log: log[:3] < to_split, between)
         return between
+
+    @staticmethod
+    def date_to_log_day(from_date, to_date, inclusive_to=False):
+        if to_date and timeutils.date_str_sep in to_date:
+            inclusive_to = True
+        from_day, to_day = map(timeutils.ensure_day_only, (from_date, to_date))
+        return from_day, to_day, inclusive_to
 
     @staticmethod
     def split_for_compare(log_name):
