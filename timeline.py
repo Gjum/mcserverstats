@@ -121,20 +121,28 @@ def draw_text(c, text, color, x_left, y_center, align=LEFT, max_w=None, shadow=N
     c.show_text(text)
     return text_width
 
-def draw_rounded_rect(c, color, x, y, w, h, radius=0):
+def draw_rounded_rect(c, color, x, y, w, h, radius=0, border=None):
+    def rect(radius=0):
+        if radius == 0:
+            c.rectangle(x, y, w, h)
+        else:
+            radius = min(radius, w / 2, h / 2)
+            degrees = 3.1416 * 2 / 360
+            c.new_sub_path()
+            c.arc(x + w - radius, y + radius, radius, -90 * degrees, 0 * degrees)
+            c.arc(x + w - radius, y + h - radius, radius, 0 * degrees, 90 * degrees)
+            c.arc(x + radius, y + h - radius, radius, 90 * degrees, 180 * degrees)
+            c.arc(x + radius, y + radius, radius, 180 * degrees, 270 * degrees)
+            c.close_path()
     c.set_source_rgba(*color)
-    if radius == 0:
-        c.rectangle(x, y, w, h)
-    else:
-        radius = min(radius, w / 2)
-        degrees = 3.1416 * 2 / 360
-        c.new_sub_path()
-        c.arc(x + w - radius, y + radius, radius, -90 * degrees, 0 * degrees)
-        c.arc(x + w - radius, y + h - radius, radius, 0 * degrees, 90 * degrees)
-        c.arc(x + radius, y + h - radius, radius, 90 * degrees, 180 * degrees)
-        c.arc(x + radius, y + radius, radius, 180 * degrees, 270 * degrees)
-        c.close_path()
+    rect(radius)
     c.fill()
+    if border:
+        border_w, *border_color = border
+        c.set_line_width(border_w)
+        c.set_source_rgba(*border_color)
+        rect(radius)
+        c.stroke()
 
 def draw_timeline(draw_data, img_path, title='', im_width=None, settings=default_settings, **kwargs):
     for key in kwargs:
