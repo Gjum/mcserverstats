@@ -93,11 +93,11 @@ def fit_text(c, text, max_w):
     width = lambda: c.text_extents(text)[2]
     if not max_w or not text or width() <= max_w:
         return text  # done
-    text += '~'
-    while width() > max_w and text != '~':
-        text = text[:-2] + '~'
-        print(text, width(), max_w)
-    return text
+    ellipsis = '~'
+    text += ellipsis
+    while width() > max_w and text != ellipsis:
+        text = text[:-2] + ellipsis
+    return text if text != ellipsis else ''
 
 
 def draw_text(c, text, color, x_left, y_center, align=LEFT, max_w=None, shadow=None):
