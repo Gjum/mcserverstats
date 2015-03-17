@@ -2,7 +2,6 @@ import glob
 import gzip
 import timeutils
 import logging
-import time
 import os
 import re
 import yaml
@@ -43,28 +42,16 @@ class LogFile:
         self.online = {}
         self.times = []
 
-    def read_log(self):
+    def read_log(self, force_convert=False):
         if self.been_read:
             logger.debug('Already read %s', self.log_name)
             return
         try:
+            if force_convert:
+                raise Exception  # force re-conversion
             yaml_file = open(self.log_path + '.yaml', 'r')
-        except FileNotFoundError:
-            # no converted file exists, create it
-            self.peek_start()
-            if self.prev_log:
-                self.prev_log.read_log()
-                self.online = self.prev_log.online
-                if self.started:
-                    # TODO crash, update previous yaml instead?
-                    for name in list(self.online.keys())[:]:
-                        self.found_leave(-1, self.prev_log.last_event, name, 'Server Crash')
-                        logger.info('Server started, leaving %s at %s' % (name, self.log_name))
-
-            elif not self.started:
-                raise ValueError('First log and no server start')
-            self.convert_log()
-            self.write_yaml()
+        except:  # no converted file exists, create it
+            self.convert_log(force_convert)
         else:  # converted file exists, read it
             with yaml_file:
                 data = yaml.load(yaml_file)
@@ -75,7 +62,18 @@ class LogFile:
             logger.debug('%s.%s = %s' % (self.log_name, attr, getattr(self, attr)))
         logger.debug('Done reading %s ------------------------------', self.log_name)
 
-    def convert_log(self):
+    def convert_log(self, force_convert=False):
+        self.peek_start()
+        if self.prev_log:
+            self.prev_log.read_log(force_convert)
+            self.online = self.prev_log.online
+            if self.started:
+                # TODO crash, update previous yaml instead?
+                for name in list(self.online.keys())[:]:
+                    self.found_leave(-1, self.prev_log.last_event, name, 'Server Crash')
+                    logger.info('Server started, leaving %s at %s' % (name, self.log_name))
+        elif not self.started:
+            raise ValueError('First log and no server start')
         if self.log_name == 'latest': logger.debug('Converting latest')
         else: logger.info('Converting %s', self.log_name)
         if self.log_name == 'latest':
@@ -109,6 +107,7 @@ class LogFile:
             for name in list(self.online.keys())[:]:
                 self.found_leave(-1, self.last_event, name, 'Server Stop')
                 logger.info('Server stopped, leaving %s at %s' % (name, self.log_name))
+        self.write_yaml()
 
     @log_action('^\[User Authenticator #(\d+)/INFO\]: UUID of player ([^ ]+) is ([-\da-f]{36})$')
     def found_uuid(self, line_nr, seconds, auth_nr, name, uuid):
@@ -191,7 +190,7 @@ class LogDirectory:
             self.log_files[log_name_tuple] = log_file
         self.log_files['latest'] = LogFile(logs_dir, 'latest', prev_log_file)
 
-    def read_interval(self, from_log=None, to_log=None, inclusive_to=False):
+    def read_interval_iter(self, from_log=None, to_log=None, inclusive_to=False, force_convert=False):
         """
         Returns an iterator over the LogFiles that lie between `from_log` and `to_log`.
         These are also read and converted if necessary.
@@ -199,11 +198,11 @@ class LogDirectory:
         logger.debug('read_interval: from_log=%s to_log=%s', from_log, to_log)
         for name_tuple in self.iter_log_name_tuples_between(from_log, to_log, inclusive_to):
             log_file = self.log_files[name_tuple]
-            log_file.read_log()
+            log_file.read_log(force_convert)
             yield log_file
         if to_log is None:
             log_file = self.log_files['latest']
-            log_file.read_log()
+            log_file.read_log(force_convert)
             yield log_file
 
     def collect_data(self, from_date=None, to_date=None, inclusive_to=False):
@@ -215,7 +214,7 @@ class LogDirectory:
         from_day, to_day, inclusive_to = self.date_to_log_day(from_date, to_date, inclusive_to)
         times = []
         last_log = None
-        for log_file in self.read_interval(from_day, to_day, inclusive_to):
+        for log_file in self.read_interval_iter(from_day, to_day, inclusive_to):
             times.extend(log_file.times)
             last_log = log_file
         return times, (last_log.online if last_log else {})
@@ -250,7 +249,7 @@ class LogDirectory:
     def collect_uptimes(self, from_date=None, to_date=None, inclusive_to=False):
         from_day, to_day, inclusive_to = self.date_to_log_day(from_date, to_date, inclusive_to)
         first_event = None
-        for log_file in self.read_interval(from_day, to_day, inclusive_to):
+        for log_file in self.read_interval_iter(from_day, to_day, inclusive_to):
             if log_file.started and log_file.prev_log and not log_file.prev_log.stopped:
                 yield (first_event or timeutils.date_str_to_epoch(from_date),
                        log_file.prev_log.last_event)
