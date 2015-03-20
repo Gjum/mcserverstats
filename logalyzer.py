@@ -1,5 +1,6 @@
 import glob
 import gzip
+import errno
 import timeutils
 import logging
 import os
@@ -50,7 +51,10 @@ class LogFile:
             if force_convert:
                 raise Exception  # force re-conversion
             yaml_file = open(self.log_path + '.yaml', 'r')
-        except:  # no converted file exists, create it
+        except (OSError, IOError) as e:
+            if e.errno != errno.ENOENT:
+                raise
+            # no converted file exists, create it
             self.convert_log(force_convert)
         else:  # converted file exists, read it
             with yaml_file:
