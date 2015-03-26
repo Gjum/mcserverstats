@@ -1,4 +1,4 @@
-Minecraft Log Analyzer
+Minecraft Server Stats
 ======================
 
 Analyze the online times of players on your Minecraft server by scanning the logfiles.
@@ -8,30 +8,34 @@ Includes utilities to collect interesting user data and render timelines.
 Installation
 ------------
 
-`git clone https://github.com/Gjum/mc-logalyzer.git`
+`git clone https://github.com/Gjum/mc-server-stats.git`
 
 Usage
 -----
 
-`./timelineDay <path to log files> <png_path> [<day> | [<from-day> <to-day>]]`
+`./timelineDay <path/to/logs> <png_path> [<from-date> [to-date]]`
 
-day format is "YYYY-MM-DD", get times from...
+date format is "YYYY-MM-DD" or "YYYY-MM-DD HH:MM:SS", get timeline from...
 
-- no days: last 24h,
-- `day` only: times during that day,
+- no dates: the 24h before the last log event,
+- `from` only: the 24h after that date,
 - `from` and `to`: time between `from` and `to`, `to` is exclusive
 
-`./onlineTimes <path to log files> [<day> | [<from-day> <to-day>]]`
+`./onlineTimes <path/to/logs> [<from-date> [to-date]]`
 
-day format is "YYYY-MM-DD", get times from...
+date format is "YYYY-MM-DD" or "YYYY-MM-DD HH:MM:SS", get times from...
 
-- no days: total times,
-- `day` only: times during that day,
+- no dates: total times,
+- `from` only: the 24h after that date,
 - `from` and `to`: time between `from` and `to`, `to` is exclusive
 
 ### Roadmap
 
-TODO
+- Timeline: HTML output
+- more stats, like
+  - times died
+  - achievements
+- last in-game activity (chat, kills, ...)
 
 [Open an issue](issues/new) for a new use case.
 
