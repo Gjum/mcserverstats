@@ -23,7 +23,7 @@ if len(sys.argv) > 3:
 if from_date:
     print('Online times from',
           timeutils.human_date_str(from_date),
-          'to', timeutils.human_date_str(to_date) or 'now')
+          'to', timeutils.human_date_str(to_date) or 'last activity')
 else:
     print('Total online times')
 

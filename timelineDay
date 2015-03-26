@@ -25,11 +25,11 @@ if len(sys.argv) > 3:
 if len(sys.argv) > 4:
     to_date = timeutils.ensure_full_date(sys.argv[4])
 
-title = '%s - %s' % (timeutils.human_date_str(from_date),
-                     timeutils.human_date_str(to_date) or 'now')
+title = '%s to %s' % (timeutils.human_date_str(from_date),
+                      timeutils.human_date_str(to_date) or 'last activity')
 
 print('Creating timeline', '"%s"' % title, 'as', img_path)
-print('    from', from_date, 'to', to_date or 'now')
+print('    from', from_date, 'to', to_date or 'last activity')
 
 draw_data = timeline.get_draw_data(logs, from_date, to_date)
 timeline.draw_timeline(draw_data, img_path, title)
