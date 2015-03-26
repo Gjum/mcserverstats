@@ -1,5 +1,6 @@
 import cairo
 import timeutils
+from urllib.request import urlopen
 
 """
 /-----border------\
@@ -46,7 +47,7 @@ default_settings = {
 
     'name_radius': 5,
     'name_border': 5,
-    'name_height': 20,
+    'name_height': 24,
     'name_color': [1, 1, 1],
     'name_shadow_color': [0, 0, 0, 0.5],
     'name_shadow_offset': [1.8, 1.8],
@@ -88,7 +89,6 @@ LEFT = 'left'
 CENTER = 'center'
 RIGHT = 'right'
 
-
 def fit_text(c, text, max_w):
     width = lambda: c.text_extents(text)[2]
     if not max_w or not text or width() <= max_w:
@@ -98,7 +98,6 @@ def fit_text(c, text, max_w):
     while width() > max_w and text != ellipsis:
         text = text[:-2] + ellipsis
     return text if text != ellipsis else ''
-
 
 def draw_text(c, text, color, x_left, y_center, align=LEFT, max_w=None, shadow=None):
     """
@@ -159,6 +158,22 @@ def draw_rounded_rect(c, color, x, y, w, h, radius=0, border=None):
 def dark_border(width, color):
     r, g, b = map(lambda c: c / 2, color)
     return width, r, g, b
+
+skin_cache = {}
+
+def draw_head(c, x, y, h, name):
+    c.save()
+    c.translate(x, y)
+    c.scale(h/8, h/8)
+    if name not in skin_cache:
+        skin_url = 'http://skins.minecraft.net/MinecraftSkins/%s.png' % name
+        skin_cache[name] = cairo.ImageSurface.create_from_png(urlopen(skin_url))
+    for skin_x in (8, 40):
+        c.set_source_surface(skin_cache[name], -skin_x, -8)
+        c.get_source().set_filter(cairo.FILTER_NEAREST)
+        c.rectangle(0, 0, 8, 8)
+        c.fill()
+    c.restore()
 
 def draw_timeline(draw_data, img_path, title='', im_width=None, settings=default_settings, **kwargs):
     for key in kwargs:
@@ -237,7 +252,9 @@ def draw_timeline(draw_data, img_path, title='', im_width=None, settings=default
             w = (t_to - t_from) * h_stretch
             draw_rounded_rect(c, color, x, y, w, line_height, s.name_radius, dark_border(2, color))
             t_x = x + name_horiz_border
-            t_y = y + s.name_border + s.name_height / 2
+            h_y = y + s.name_border
+            t_y = h_y + s.name_height / 2
+            draw_head(c, t_x, h_y, s.name_height, name)
             draw_text(c, name, s.name_color, t_x, t_y, max_w=w - 2 * name_horiz_border,
                       shadow=(s.name_shadow_color, s.name_shadow_offset))
 
