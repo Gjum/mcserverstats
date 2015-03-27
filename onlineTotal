@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta
 from time import strftime
-import logalyzer
+from mcserverstats import logalyzer
 import sys
 
 # apply args

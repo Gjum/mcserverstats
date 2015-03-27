@@ -1,5 +1,5 @@
 import cairo
-import timeutils
+from mcserverstats import timeutils
 from urllib.request import urlopen
 
 """
@@ -274,7 +274,7 @@ def get_draw_data(logs, from_date=None, to_date=None):
 
 
 if __name__ == '__main__':
-    import logalyzer
+    from mcserverstats import logalyzer
     logs = logalyzer.LogDirectory('test_logs/')
     draw_data = get_draw_data(logs, None, None)
     t_start, t_end = draw_data[:2]

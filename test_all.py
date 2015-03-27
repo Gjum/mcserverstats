@@ -2,8 +2,7 @@ import glob
 import os
 import unittest
 import yaml
-import logalyzer
-import timeutils
+from mcserverstats import logalyzer, timeutils
 
 UUID_HHL = '808e727f-895a-4ac2-b246-4b6da2ca9451'
 UUID_ULEXOS = 'a1d94087-e9c0-412f-b90f-cff2c224d44f'

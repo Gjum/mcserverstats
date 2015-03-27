@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-import timeutils
-import logalyzer
+from mcserverstats import logalyzer, timeutils
 import sys
 
 if len(sys.argv) <= 1:

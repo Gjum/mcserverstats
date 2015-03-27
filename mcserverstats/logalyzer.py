@@ -1,7 +1,7 @@
 import glob
 import gzip
 import errno
-import timeutils
+from mcserverstats import timeutils
 import logging
 import os
 import re
