@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-
+import os, sys
 from mcserverstats import logalyzer, timeline, timeutils
-import sys
 
 if len(sys.argv) <= 2:
     print('Usage: %s <path/to/logs> <png_path> [<from-date> [to-date]]' % sys.argv[0])
@@ -12,7 +11,7 @@ if len(sys.argv) <= 2:
     sys.exit(0)
 
 logs = logalyzer.LogDirectory(sys.argv[1])
-img_path = sys.argv[2]
+out_path = sys.argv[2]
 
 from_date = timeutils.add_to_date_str(
     timeutils.latest_log_date_str(logs.logs_dir), days=-1)
@@ -25,9 +24,20 @@ if len(sys.argv) > 4:
 
 title = '%s to %s' % (timeutils.human_date_str(from_date),
                       timeutils.human_date_str(to_date) or 'last activity')
+print('Creating timeline', '"%s"' % title, 'as', out_path)
 
-print('Creating timeline', '"%s"' % title, 'as', img_path)
-print('    from', from_date, 'to', to_date or 'last activity')
-
-draw_data = timeline.get_draw_data(logs, from_date, to_date)
-timeline.draw_timeline(draw_data, img_path, title)
+timeline_data = timeline.get_timeline_data(logs, from_date, to_date)
+out_type = out_path.lower().rsplit('.', 1)[-1]
+if out_type in ('html', 'htm'):
+    html_page = '<html><body style="margin:0px;background-image:url(http://sosnowkadub.de/minecraft/stone.png)">' \
+                + timeline.get_timeline_html(timeline_data, title) + \
+                '</body></html>'
+    with open(out_path, 'w') as out_file:
+        out_file.write(html_page)
+    out_dir = os.path.split(out_path)[0]
+    if out_dir:
+        print('Remember to ln -s "%s/%s" "%s"' % (out_dir, timeline.image_path, timeline.image_path))
+elif out_type.endswith('png'):
+    timeline.draw_timeline(timeline_data, out_path, title)
+else:
+    print('Error: Unknown output type', out_type, file=sys.stderr)
