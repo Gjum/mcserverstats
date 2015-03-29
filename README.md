@@ -13,10 +13,11 @@ Installation
 Usage
 -----
 
-`./timelineDay <path/to/logs> <png_path> [<from-date> [to-date]]`
+`./timelineDay <path/to/logs> <path/to/output> [<from-date> [to-date]]`
 
-date format is "YYYY-MM-DD" or "YYYY-MM-DD HH:MM:SS", get timeline from...
-
+date format is "YYYY-MM-DD" or "YYYY-MM-DD HH:MM:SS"
+output can be `*.png` or `*.html`, remember to link the images path
+get timeline from...
 - no dates: the 24h before the last log event,
 - `from` only: the 24h after that date,
 - `from` and `to`: time between `from` and `to`, `to` is exclusive

@@ -3,8 +3,10 @@ import os, sys
 from mcserverstats import logalyzer, timeline, timeutils
 
 if len(sys.argv) <= 2:
-    print('Usage: %s <path/to/logs> <png_path> [<from-date> [to-date]]' % sys.argv[0])
-    print('    date format is "YYYY-MM-DD" or "YYYY-MM-DD HH:MM:SS", get timeline from...')
+    print('Usage: %s <path/to/logs> <path/to/output> [<from-date> [to-date]]' % sys.argv[0])
+    print('    date format is "YYYY-MM-DD" or "YYYY-MM-DD HH:MM:SS"')
+    print('    output can be *.png or *.html, remember to link the images path')
+    print('    get timeline from...')
     print('    - no dates: the 24h before the last log event,')
     print('    - from only: the 24h after that date,')
     print('    - from and to: time between from and to, to is exclusive')
