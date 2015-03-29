@@ -37,8 +37,9 @@ if out_type in ('html', 'htm'):
     with open(out_path, 'w') as out_file:
         out_file.write(html_page)
     out_dir = os.path.split(out_path)[0]
-    if out_dir:
-        print('Remember to ln -s "%s/%s" "%s"' % (out_dir, timeline.image_path, timeline.image_path))
+    out_symlink = '%s/%s' % (out_dir, timeline.image_path)
+    if out_dir and not os.path.islink(out_symlink):
+        print("Remember to ln -s '%s/' '%s'" % (timeline.image_path, out_symlink))
 elif out_type.endswith('png'):
     timeline.draw_timeline(timeline_data, out_path, title)
 else:
