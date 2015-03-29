@@ -1,7 +1,11 @@
-from mcserverstats import timeutils
+import os
 from urllib.request import urlopen
+from mcserverstats import timeutils
 
-import cairo
+try:
+    import cairocffi as cairo
+except ImportError:
+    import cairo
 
 ########## PNG helpers ##########
 
@@ -161,7 +165,7 @@ def draw_head(c, x, y, h, name):
     try:
         data = skin_cache[name].get_data()
     except NotImplementedError:
-        print('Hat rendering failed. Check if your pycairo installation supports Surface.get_data()')
+        print('Hat rendering disabled. Install cairocffi or check if your pycairo installation supports Surface.get_data().')
     else:
         if data[0][0] == 0:
             copy_8x8_at(40)  # hat
@@ -274,7 +278,6 @@ def draw_timeline(timeline_data, img_path, title='', im_width=None, settings=def
 ########## HTML helpers ##########
 
 def file_exists(path):
-    import os
     os.makedirs(os.path.split(path)[0], exist_ok=True)
     return os.path.isfile(path)
 
