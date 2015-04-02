@@ -268,7 +268,8 @@ def draw_timeline(timeline_data, img_path, title='', im_width=None, settings=def
             t_x = x + name_horiz_border
             h_y = y + s.name_border
             t_y = h_y + s.name_height / 2
-            draw_head(c, t_x, h_y, s.name_height, name)
+            if w > s.name_height + 2 * s.name_border:
+                draw_head(c, t_x, h_y, s.name_height, name)
             draw_text(c, name, s.name_color, t_x, t_y, max_w=w - 2 * name_horiz_border,
                       shadow=(s.name_shadow_color, s.name_shadow_offset))
 
