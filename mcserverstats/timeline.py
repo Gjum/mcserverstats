@@ -10,7 +10,7 @@ except ImportError:
 ########## PNG helpers ##########
 
 def color_from_uuid(uuid, settings):
-    return settings['color_'+uuid[4]]
+    return settings['color_%x' % (ord(uuid[0]) % 16)]
 
 default_settings = {
     'font_name': 'sans',

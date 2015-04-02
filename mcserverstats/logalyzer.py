@@ -123,7 +123,9 @@ class LogFile:
             logger.warn('Double join %s, at %s %i', name, self.log_name, line_nr)
             self.online[name][2] += 1
         else:
-            self.online[name] = [self.uuids[name], seconds, 1]
+            # support for offline-mode servers, where no UUIDs are announced
+            uuid = self.uuids[name] if name in self.uuids else name
+            self.online[name] = [uuid, seconds, 1]
 
     @log_action('^\[Server thread/INFO\]: ([^ ]+) lost connection: (.*)$')
     def found_leave(self, line_nr, seconds, name, reason):
