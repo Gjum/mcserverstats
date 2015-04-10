@@ -261,7 +261,8 @@ class LogDirectory:
                        log_file.prev_log.last_event)
                 first_event = None
             if not first_event:
-                first_event = log_file.first_event
+                first_event = log_file.first_event if log_file.started \
+                    else timeutils.date_str_to_epoch(from_date)
             if log_file.stopped:
                 yield (first_event, log_file.last_event)
                 first_event = None
