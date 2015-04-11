@@ -1,4 +1,4 @@
-import os
+import base64
 from urllib.request import urlopen
 from mcserverstats import timeutils
 
@@ -148,9 +148,11 @@ def dark_border(width, color):
     return width, r, g, b
 
 skin_cache = {}
+hat_rendering_disabled = False
 
 def draw_head(c, x, y, h, name):
     if name not in skin_cache:
+        print('Downloading skin of', name)
         skin_url = 'http://skins.minecraft.net/MinecraftSkins/%s.png' % name
         skin_cache[name] = cairo.ImageSurface.create_from_png(urlopen(skin_url))
     c.save()
@@ -162,13 +164,17 @@ def draw_head(c, x, y, h, name):
         c.rectangle(0, 0, 8, 8)
         c.fill()
     copy_8x8_at(8)  # face
-    try:
-        data = skin_cache[name].get_data()
-    except NotImplementedError:
-        print('Hat rendering disabled. Install cairocffi or check if your pycairo installation supports Surface.get_data().')
-    else:
-        if data[0][0] == 0:
-            copy_8x8_at(40)  # hat
+    global hat_rendering_disabled
+    if not hat_rendering_disabled:  # only try/notify once
+        try:
+            data = skin_cache[name].get_data()
+        except NotImplementedError:
+                hat_rendering_disabled = True
+                import sys
+                print('Hat rendering disabled. Install cairocffi or check if your pycairo installation supports Surface.get_data().', file=sys.stderr)
+        else:
+            if data[0][0] == 0:
+                copy_8x8_at(40)  # hat
     c.restore()
 
 def draw_timeline(timeline_data, img_path, title='', im_width=None, settings=default_settings, **kwargs):
@@ -278,52 +284,50 @@ def draw_timeline(timeline_data, img_path, title='', im_width=None, settings=def
 
 ########## HTML helpers ##########
 
-def file_exists(path):
-    os.makedirs(os.path.split(path)[0], exist_ok=True)
-    return os.path.isfile(path)
+def surface_to_base64(surface):
+    try:
+        img_bytes = surface.write_to_png()  # works with newer versions of cairo
+    except TypeError:
+        import io
+        with io.BytesIO() as sio:
+            surface.write_to_png(sio)
+            img_bytes = sio.getvalue()
+    return 'data:image/png;base64,' + base64.b64encode(img_bytes).decode()
 
-image_path = 'timeline_files'
-
-def bg_scale_path(bg_width):
-    return '%s/bg_scale_%s.png' % (image_path, bg_width)
-
-def head_path(name, height=32):
-    return '%s/%s_%s.png' % (image_path, name, height)
-
-def gen_bg_scale(bg_width):
-    print('gen bg', bg_width)
-    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, bg_width*2,1)
+def bg_scale_base64(hour_width):
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, hour_width, 1)
     c = cairo.Context(surface)
     c.set_source_rgba(0,0,0, 0.3)
-    c.rectangle(0,0, bg_width,1)
-    # c.set_line_width(1)
-    c.stroke()
-    surface.write_to_png(bg_scale_path(bg_width))
+    c.rectangle(0, 0, 1, 1)
+    c.rectangle(hour_width-1, 0, 1, 1)
+    c.fill()
+    base_64 = surface_to_base64(surface)
+    return base_64
 
-def gen_head(name, height=32):
-    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, height, height)
-    c = cairo.Context(surface)
-    draw_head(c, 0, 0, height, name)
-    surface.write_to_png(head_path(name, height))
+head_base64_cache = {}  # TODO what to cache? what not?
 
-def get_timeline_html(timeline_data, title='', bg_width=30):
+default_html_style_players = \
+    '.tl_user_Offlinegott span{background-color:#f00}' \
+    '.tl_user_Ulexos span{background-color:#0f0}' \
+    '.tl_user_HHL span{background-color:#f80}' \
+    '.tl_user_Gjum span{background-color:#48f}'
+
+def player_head_img_base64(name, height=32):
+    if name not in head_base64_cache:
+        surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, height, height)
+        c = cairo.Context(surface)
+        draw_head(c, 0, 0, height, name)
+        head_base64_cache[name] = surface_to_base64(surface)
+    return head_base64_cache[name]
+
+def get_timeline_html(timeline_data, title='', hour_width=30, html_style_players=default_html_style_players):
     t_start, t_end, lines, uptimes = timeline_data
+    hour_width = int(hour_width)
 
     sec_per_hour = 3600
-    sec_to_screen = lambda t: t * bg_width / sec_per_hour
+    sec_to_screen = lambda t: t * hour_width / sec_per_hour
 
-    player_colors = {
-        'Gjum': '#48f',
-        'HHL': '#f80',
-        'Ulexos': '#0f0',
-        'Offlinegott': '#f00',
-    } # map of name -> color
-    template_style_player = '.tl_user_%(name)s span{background-color:%(color)s}'
-    html_style_players = ''.join(template_style_player % {
-        'name': name, 'color': color,
-    } for name, color in player_colors.items())
-
-    template_session = '<span style="left:%(start)spx;width:%(duration)spx"></span>'
+    template_session = '<span style="left:%(start).3fpx;width:%(duration).3fpx"></span>'
     def session_to_html(t_from, t_to):
         start = sec_to_screen(t_from - t_start)
         duration = sec_to_screen(t_to - t_from)
@@ -334,7 +338,7 @@ def get_timeline_html(timeline_data, title='', bg_width=30):
     template_player_sessions = \
         '<tr><td class="tl_sessions tl_user_%(name)s">' \
         '%(sessions)s' \
-        '</td><td><img height="16px" src="'+head_path('%(name)s')+'"/></td><td>%(name)s</td></tr>'
+        '</td><td><img height="16px" src="%(head_b64)s"/>&nbsp;%(name)s</td></tr>'
     html_all_player_sessions = ''
     for line in lines:
         last_name = line[-1][-1]
@@ -342,10 +346,10 @@ def get_timeline_html(timeline_data, title='', bg_width=30):
         for uuid, t_from, t_to, name in line:
             html_sessions += session_to_html(t_from, t_to)
         html_all_player_sessions += template_player_sessions % {
-            'name':last_name, 'sessions': html_sessions
+            'name': last_name,
+            'sessions': html_sessions,
+            'head_b64': player_head_img_base64(last_name),
         }
-        if not file_exists(head_path(last_name)):
-            gen_head(last_name)
 
     html_uptimes = ''.join(session_to_html(t_from, t_to) for t_from, t_to in uptimes)
 
@@ -353,19 +357,20 @@ def get_timeline_html(timeline_data, title='', bg_width=30):
     bg_offset = None
     for sec in range((t_start // sec_per_hour) * sec_per_hour,
                      t_end + sec_per_hour, sec_per_hour):
-        if sec < t_start or sec >= t_end:
+        if sec <= t_start or sec >= t_end:
             continue  # out of range by rounding
         if bg_offset is None:  # first drawn hour
             bg_offset = sec_to_screen(sec - t_start)
         hour_text = timeutils.epoch_to_date_str(sec, '%k')  # hour 0-23, space padded
         html_hours += '<span>%s</span>' % hour_text
-    if not file_exists(bg_scale_path(bg_width)):
-        gen_bg_scale(bg_width)
 
     page_data = {
         'title_text': title,
-        'bgwidth': bg_width,
-        'bgoffset': bg_offset,
+        'hour_width': hour_width,
+        'bg_scale_b64': bg_scale_base64(hour_width),
+        'bg_offset': bg_offset,
+        'hour_offset': bg_offset - hour_width/2,
+        'sessions_width': sec_to_screen(t_end - t_start),
         'style_players': html_style_players,
         'hours': html_hours,
         'uptimes': html_uptimes,
@@ -375,27 +380,27 @@ def get_timeline_html(timeline_data, title='', bg_width=30):
         '<style type="text/css">' \
         '.timeline td{margin:0px;padding:0px}' \
         '.timeline span{display:inline-block;overflow:hidden}' \
-        '.tl_hours span{width:%(bgwidth)spx}' \
-        '.tl_hours,.tl_uptimes,.tl_sessions{background-image:url('+bg_scale_path('%(bgwidth)s')+');background-position:%(bgoffset)spx 0px;background-repeat:repeat;position:relative;height:20px}' \
+        '.tl_hours span{width:%(hour_width)ipx;text-align:center}' \
+        '.tl_uptimes,.tl_sessions{background-image:url(%(bg_scale_b64)s);background-position:%(bg_offset).3fpx 0px;background-repeat:repeat;position:relative;height:20px}' \
         '.tl_uptimes span,.tl_sessions span{background-color:rgba(128,128,128,0.3);border:2px solid rgba(0,0,0,0.4);height:12px;position:absolute;top:2px;' \
         'border-radius:8px;-moz-border-radius:8px}' \
         '.tl_uptimes span{background-color:#0f0;border-color:black;height:6px;top:5px}' \
         '%(style_players)s' \
         '</style><table class="timeline" style="border-collapse:collapse">' \
-        '<tr><td class="tl_hours" style="padding-left:%(bgoffset)spx">' \
+        '<tr><td class="tl_hours" style="min-width:%(sessions_width).3fpx;padding-left:%(hour_offset).3fpx">' \
         '%(hours)s' \
-        '</td><td colspan="2">Hours</td></tr>' \
+        '</td><td>Hours</td></tr>' \
         '<tr><td class="tl_uptimes">' \
         '%(uptimes)s' \
-        '</td><td colspan="2">Server online</td></tr>' \
+        '</td><td>Server&nbsp;online</td></tr>' \
         '%(players)s' \
-        '<tr><td colspan=3 align="center" class="tl_title" style="font-size:20px">%(title_text)s</td></tr>' \
+        '<tr><td colspan=2 align="center" class="tl_title" style="font-size:20px">%(title_text)s</td></tr>' \
         '</table>'
     return template_timeline % page_data
 
-def write_timeline_html_page(timeline_data, page_path, title='', bg_width=30):
-    html_page = '<html><body style="margin:0px">' \
-                + get_timeline_html(timeline_data, title, bg_width) + \
+def write_timeline_html_page(timeline_data, page_path, title='', hour_width=30):
+    html_page = '<html><body style="margin:0px;background-color:#aaa">' \
+                + get_timeline_html(timeline_data, title, hour_width) + \
                 '</body></html>'
     with open(page_path, 'w') as out_file:
         out_file.write(html_page)

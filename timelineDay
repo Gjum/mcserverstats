@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-import os, sys
+import sys
 from mcserverstats import logalyzer, timeline, timeutils
 
 if len(sys.argv) <= 2:
     print('Usage: %s <path/to/logs> <path/to/output> [<from-date> [to-date]]' % sys.argv[0])
     print('    date format is "YYYY-MM-DD" or "YYYY-MM-DD HH:MM:SS"')
-    print('    output can be *.png or *.html, remember to link the images path')
-    print('    get timeline from...')
+    print('    output can be *.png or *.html, get timeline from...')
     print('    - no dates: the 24h before the last log event,')
     print('    - from only: the 24h after that date,')
     print('    - from and to: time between from and to, to is exclusive')
@@ -31,16 +30,8 @@ print('Creating timeline', '"%s"' % title, 'as', out_path)
 timeline_data = timeline.get_timeline_data(logs, from_date, to_date)
 out_type = out_path.lower().rsplit('.', 1)[-1]
 if out_type in ('html', 'htm'):
-    html_page = '<html><body style="margin:0px;background-image:url(http://sosnowkadub.de/minecraft/stone.png)">' \
-                + timeline.get_timeline_html(timeline_data, title) + \
-                '</body></html>'
-    with open(out_path, 'w') as out_file:
-        out_file.write(html_page)
-    out_dir = os.path.split(out_path)[0]
-    out_symlink = '%s/%s' % (out_dir, timeline.image_path)
-    if out_dir and not os.path.islink(out_symlink):
-        print("Remember to ln -s '%s/' '%s'" % (timeline.image_path, out_symlink))
-elif out_type.endswith('png'):
+    timeline.write_timeline_html_page(timeline_data, out_path, title)
+elif out_type == 'png':
     timeline.draw_timeline(timeline_data, out_path, title)
 else:
     print('Error: Unknown output type', out_type, file=sys.stderr)
