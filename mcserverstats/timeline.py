@@ -339,21 +339,22 @@ def get_timeline_html(timeline_data, title='', hour_width=30, html_style_players
         '<tr><td class="tl_sessions tl_user_%(name)s">' \
         '%(sessions)s' \
         '</td><td><img height="16px" src="%(head_b64)s"/>&nbsp;%(name)s</td></tr>'
-    html_all_player_sessions = ''
+    html_all_player_sessions = []
     for line in lines:
         last_name = line[-1][-1]
         html_sessions = ''
         for uuid, t_from, t_to, name in line:
             html_sessions += session_to_html(t_from, t_to)
-        html_all_player_sessions += template_player_sessions % {
+        html_all_player_sessions.append(template_player_sessions % {
             'name': last_name,
             'sessions': html_sessions,
             'head_b64': player_head_img_base64(last_name),
-        }
+        })
+    html_all_player_sessions = ''.join(html_all_player_sessions)
 
     html_uptimes = ''.join(session_to_html(t_from, t_to) for t_from, t_to in uptimes)
 
-    html_hours = ''
+    html_hours = []
     bg_offset = None
     for sec in range((t_start // sec_per_hour) * sec_per_hour,
                      t_end + sec_per_hour, sec_per_hour):
@@ -362,7 +363,8 @@ def get_timeline_html(timeline_data, title='', hour_width=30, html_style_players
         if bg_offset is None:  # first drawn hour
             bg_offset = sec_to_screen(sec - t_start)
         hour_text = timeutils.epoch_to_date_str(sec, '%k')  # hour 0-23, space padded
-        html_hours += '<span>%s</span>' % hour_text
+        html_hours.append('<span>%s</span>' % hour_text)
+    html_hours = ''.join(html_hours)
 
     page_data = {
         'title_text': title,
