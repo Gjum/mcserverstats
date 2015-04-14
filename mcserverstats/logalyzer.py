@@ -208,7 +208,7 @@ class LogDirectory:
             log_file.read_log(force_convert)
             yield log_file
             prev_log = log_file
-        if to_log is None or prev_log.last_event < timeutils.date_str_to_epoch(to_log):
+        if not to_log or not prev_log or prev_log.last_event < timeutils.date_str_to_epoch(to_log):
             log_file = self.log_files['latest']
             log_file.read_log(force_convert)
             yield log_file
