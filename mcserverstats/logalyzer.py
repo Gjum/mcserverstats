@@ -202,11 +202,13 @@ class LogDirectory:
         These are also read and converted if necessary.
         """
         logger.debug('read_interval: from_log=%s to_log=%s', from_log, to_log)
+        prev_log = None
         for name_tuple in self.iter_log_name_tuples_between(from_log, to_log, inclusive_to):
             log_file = self.log_files[name_tuple]
             log_file.read_log(force_convert)
             yield log_file
-        if to_log is None:
+            prev_log = log_file
+        if to_log is None or prev_log.last_event < timeutils.date_str_to_epoch(to_log):
             log_file = self.log_files['latest']
             log_file.read_log(force_convert)
             yield log_file
