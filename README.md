@@ -38,7 +38,7 @@ date format is "YYYY-MM-DD" or "YYYY-MM-DD HH:MM:SS", get times from...
   - achievements
 - last in-game activity (chat, kills, ...)
 
-[Open an issue](issues/new) for a new use case.
+[Open an issue](https://github.com/Gjum/mcserverstats/issues/new) for a new use case.
 
 ### Testing
 
