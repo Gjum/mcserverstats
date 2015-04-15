@@ -259,9 +259,11 @@ class LogDirectory:
         first_event = None
         for log_file in self.read_interval_iter(from_day, to_day, inclusive_to):
             if log_file.started and log_file.prev_log and not log_file.prev_log.stopped:
-                yield (first_event or timeutils.date_str_to_epoch(from_date),
-                       log_file.prev_log.last_event)
-                first_event = None
+                log_file.prev_log.read_log()
+                if not log_file.prev_log.stopped:
+                    yield (first_event or timeutils.date_str_to_epoch(from_date),
+                    log_file.prev_log.last_event)
+                    first_event = None
             if not first_event:
                 first_event = log_file.first_event if log_file.started \
                     else timeutils.date_str_to_epoch(from_date)
