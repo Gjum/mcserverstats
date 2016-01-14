@@ -5,10 +5,12 @@ Analyze the online times of players on your Minecraft server by scanning the log
 
 Includes utilities to collect interesting user data and render timelines.
 
+Requires Python 3
+
 Installation
 ------------
 
-`git clone https://github.com/Gjum/mc-server-stats.git`
+`git clone https://github.com/Gjum/mcserverstats.git`
 
 Usage
 -----
@@ -32,7 +34,6 @@ date format is "YYYY-MM-DD" or "YYYY-MM-DD HH:MM:SS", get times from...
 
 ### Roadmap
 
-- Timeline: HTML output
 - more stats, like
   - times died
   - achievements
